@@ -673,7 +673,7 @@ public class Decompiler {
       case CALL: {
         boolean multiple = (C >= 3 || C == 0);
         if(B == 0) B = registers - A;
-        if(C == 0) C = registers - A + 1;
+        if(C == 0) C = registers - A;
         Expression function = r.getExpression(A, line);
         Expression[] arguments = new Expression[B - 1];
         for(int register = A + 1; register <= A + B - 1; register++) {
@@ -787,15 +787,15 @@ public class Decompiler {
         break;
       case VARARG: {
         boolean multiple = (B != 2);
-        
+
         // B == 1 means no registers are set; this should only happen when the VARARG
         // appears on the right-hand side of an assignment without enough targets.
         // Should be multiple (as not adjusted "(...)"), and we need to pretend it's
         // an actual operation so we can capture it...
         // (luac allocates stack space even though it doesn't technically use it)
         if(B == 1) B = 2;
-        
-        if(B == 0) B = registers - A + 1;
+
+        if(B == 0) B = registers - A;
         Expression value = new Vararg(B - 1, multiple);
         operations.add(new MultipleRegisterSet(line, A, A + B - 2, value));
         break;
@@ -803,7 +803,7 @@ public class Decompiler {
       case VARARG54: {
         boolean multiple = (C != 2);
         if(C == 1) C = 2; // see above
-        if(C == 0) C = registers - A + 1;
+        if(C == 0) C = registers - A;
         Expression value = new Vararg(C - 1, multiple);
         operations.add(new MultipleRegisterSet(line, A, A + C - 2, value));
         break;
