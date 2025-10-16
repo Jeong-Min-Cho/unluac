@@ -370,8 +370,11 @@ public class Decompiler {
         operations.add(new RegisterSet(line, A, f.getConstantExpression(Bx)));
         break;
       case LOADKX:
-        if(line + 1 > code.length || code.op(line + 1) != Op.EXTRAARG) throw new IllegalStateException();
-        operations.add(new RegisterSet(line, A, f.getConstantExpression(code.Ax(line + 1))));
+        if(line + 1 <= code.length && code.op(line + 1) == Op.EXTRAARG) {
+          operations.add(new RegisterSet(line, A, f.getConstantExpression(code.Ax(line + 1))));
+        } else {
+          operations.add(new RegisterSet(line, A, f.getConstantExpression(Bx)));
+        }
         break;
       case LOADBOOL:
         operations.add(new RegisterSet(line, A, ConstantExpression.createBoolean(B != 0)));
