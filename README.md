@@ -69,7 +69,8 @@ java -jar unluac.jar --disassemble myfile.luac
 
 ### Command-line Options
 
-- `--opmap <file>` - Use custom opcode mapping file (for modified Lua VMs)
+- `--typemap <file>` - Use custom type mapping file (for modified Lua VMs with swapped constant types)
+- `--opmap <file>` - Use custom opcode mapping file (for modified Lua VMs with shuffled opcodes)
 - `--disassemble` - Output disassembly instead of decompiled code
 - `--version` - Show version information
 
@@ -93,11 +94,54 @@ java -jar unluac.jar --disassemble myfile.luac
 | Lua 5.3     | ✅ Good                        |
 | Lua 5.4     | ✅ Good (some goto edge cases) |
 
+### Supported Variants
+
+#### xLua (Tencent, used in Unity games)
+
+xLua is Tencent's Lua 5.3 bridge for Unity, used widely in Chinese mobile games. It compiles Lua 5.3 bytecode with three non-standard modifications:
+
+| Modification | Standard Lua 5.3 | xLua |
+| --- | --- | --- |
+| Upvalue entry size | 2 bytes | 3 bytes |
+| Integer constant type tag | 3 | 19 |
+| Float constant type tag | 19 | 3 |
+| Header (bytes 0–4) | `\x1bLua\x53` | Modified |
+
+**unluac handles all of these natively** — no patched build required.
+
+**Step 1 — Fix the header**
+
+Replace the first 5 bytes of the `.luac` file with the standard Lua 5.3 header:
+
+```python
+STANDARD_LUA53_HEADER = b'\x1bLua\x53'
+
+def fix_xlua_header(data: bytes) -> bytes:
+    return STANDARD_LUA53_HEADER + data[5:]
+```
+
+**Step 2 — Create a typemap file** (`xlua.typemap`):
+
+```
+.type 3 integer
+.type 19 float
+```
+
+**Step 3 — Decompile:**
+
+```bash
+java -jar unluac.jar --typemap xlua.typemap fixed.luac -o output.lua
+```
+
+The 3-byte upvalue format is handled automatically; no extra flags needed.
+
+See [Example 2](#example-2-xlua-bytecode-unity-games) for a complete end-to-end workflow.
+
 ### Known Limitations
 
 - **Stripped Bytecode**: Cannot decompile chunks compiled with `-s` flag
 - **Complex Gotos**: Lua 5.2+ code with heavy use of goto statements may not decompile perfectly
-- **Custom Lua VMs**: Modified Lua implementations may require custom opcode mappings
+- **Custom Lua VMs**: Modified Lua implementations may require custom opcode or type mappings (see [Supported Variants](#supported-variants) for known working configurations)
 
 ## Changes in This Fork
 
@@ -194,9 +238,38 @@ luac -o original.luac original.lua
 java -jar unluac.jar original.luac > decompiled.lua
 ```
 
-### Example 2: Working with Custom Lua VMs (xlua)
+### Example 2: xLua Bytecode (Unity Games)
 
-For modified Lua implementations with shuffled opcodes:
+xLua (used in many Unity mobile games) compiles Lua 5.3 with a modified header and swapped constant type tags. See [Supported Variants → xLua](#xlua-tencent-used-in-unity-games) for the full explanation.
+
+**1. Fix the header (Python):**
+
+```python
+STANDARD_LUA53_HEADER = b'\x1bLua\x53'
+
+with open("input.luac", "rb") as f:
+    data = f.read()
+
+with open("fixed.luac", "wb") as f:
+    f.write(STANDARD_LUA53_HEADER + data[5:])
+```
+
+**2. Create `xlua.typemap`:**
+
+```
+.type 3 integer
+.type 19 float
+```
+
+**3. Decompile:**
+
+```bash
+java -jar unluac.jar --typemap xlua.typemap fixed.luac -o output.lua
+```
+
+### Example 3: Custom Opcode Mapping
+
+For modified Lua implementations with shuffled opcodes (xLua does **not** shuffle opcodes — use `--typemap` instead):
 
 1. Create opcode mapping file:
 
