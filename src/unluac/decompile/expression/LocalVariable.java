@@ -39,4 +39,9 @@ public class LocalVariable extends Expression {
     return true;
   }
   
+  @Override
+  public boolean isEnvironmentTable(Decompiler d) {
+    return d.getVersion().isEnvironmentTable(decl.name);
+  }
+  
 }

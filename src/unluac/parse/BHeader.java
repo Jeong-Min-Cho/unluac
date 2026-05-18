@@ -32,6 +32,7 @@ public class BHeader {
   public final LHeader lheader;
   public final LHeaderType lheader_type;
   public final BIntegerType integer;
+  public final BIntegerType vinteger;
   public final BIntegerType sizeT;
   public final LBooleanType bool;
   public final LNumberType number;
@@ -59,6 +60,7 @@ public class BHeader {
     this.lheader = lheader;
     this.lheader_type = version.getLHeaderType();
     integer = lheader.integer;
+    vinteger = lheader.vinteger;
     sizeT = lheader.sizeT;
     bool = lheader.bool;
     number = lheader.number;
@@ -97,6 +99,7 @@ public class BHeader {
     lheader_type = version.getLHeaderType();
     lheader = lheader_type.parse(buffer, this);
     integer = lheader.integer;
+    vinteger = lheader.vinteger;
     sizeT = lheader.sizeT;
     bool = lheader.bool;
     number = lheader.number;

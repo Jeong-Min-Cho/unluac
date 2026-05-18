@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import unluac.Version;
+import unluac.Version.Maybe;
 import unluac.decompile.block.AlwaysLoop;
 import unluac.decompile.block.Block;
 import unluac.decompile.block.Break;
@@ -61,6 +62,7 @@ public class ControlFlowHandler {
     public int targetSecond;
     public boolean inverseValue;
     public FinalSetCondition finalset;
+    public boolean deadclose;
     
     public Branch(int line, int line2, Type type, Condition cond, int targetFirst, int targetSecond, FinalSetCondition finalset) {
       this.line = line;
@@ -72,6 +74,7 @@ public class ControlFlowHandler {
       this.inverseValue = false;
       this.target = -1;
       this.finalset = finalset;
+      this.deadclose = false;
     }
 
     @Override
@@ -438,6 +441,9 @@ public class ControlFlowHandler {
               } else {
                 Branch b = new Branch(line, line, Branch.Type.jump, null, target, target, null);
                 insert_branch(state, b);
+                if(line + 1 <= code.length && code.op(line + 1) == Op.CLOSE55 && code.B(line + 1) != 0) {
+                  b.deadclose = true;
+                }
               }
             }
             break;
@@ -521,28 +527,41 @@ public class ControlFlowHandler {
     }
     
     for(int line = 1; line <= code.length; line++) {
-      switch(code.op(line)) {
+      Op op = code.op(line);
+      switch(op) {
         case FORPREP:
-        case FORPREP54: {
+        case FORPREP54:
+        case FORPREP55: {
           
           int A = code.A(line);
           int target = code.target(line);
           int begin = line + 1;
           int end = target + 1;
+          int varCount = 3;
+          if(op == Op.FORPREP55) {
+            varCount = 2;
+          }
           
           boolean forvarPreClose = false;
           boolean forvarPostClose = false;
+          boolean closeIsInScope = false;
           int closeLine = target - 1;
-          if(closeLine >= line + 1 && is_close(state, closeLine) && get_close_value(state, closeLine) == A + 3) {
+          if(closeLine >= line + 1 && is_close(state, closeLine) && get_close_value(state, closeLine) == A + varCount) {
             forvarPreClose = true;
+            if(!state.r.isNoDebug) {
+              int declScopeEnd = r.getDeclaration(A + varCount, line).end;
+              if(get_close_type(state, closeLine) == CloseType.CLOSE54) {
+                if(declScopeEnd == closeLine) closeIsInScope = true;
+              }
+            }
             closeLine--;
-          } else if(end <= code.length && is_close(state, end) && get_close_value(state, end) == A + 3) {
+          } else if(end <= code.length && is_close(state, end) && get_close_value(state, end) == A + varCount) {
             forvarPostClose = true;
           }
           
           ForBlock block = new ForBlock51(
-            state.function, begin, end, A,
-            get_close_type(state, closeLine), closeLine, forvarPreClose, forvarPostClose
+            state.function, begin, end, A, varCount,
+            get_close_type(state, closeLine), closeLine, forvarPreClose, forvarPostClose, closeIsInScope
           );
           
           block.handleVariableDeclarations(r);
@@ -566,19 +585,42 @@ public class ControlFlowHandler {
           remove_branch(state, state.branches[target + 1]);
           break;
         }
-        case TFORPREP54: {
+        case TFORPREP54:
+        case TFORPREP55: {
+          boolean v55 = (op == Op.TFORPREP55);
+          
           int target = code.target(line);
           int A = code.A(line);
           int C = code.C(target);
           
+          int controlCount = 4;
+          if(v55) controlCount = 3;
+          
           boolean forvarClose = false;
           int close = target - 1;
-          if(close >= line + 1 && is_close(state, close) && get_close_value(state, close) == A + 4) {
+          if(close >= line + 1 && is_close(state, close) && get_close_value(state, close) == A + controlCount) {
             forvarClose = true;
             close--;
           }
           
-          TForBlock block = TForBlock.make54(state.function, line + 1, target + 2, A, C, forvarClose);
+          boolean closeIsInScope = false;
+          if(v55) {
+            closeIsInScope = true;
+          } else if(!state.r.isNoDebug && target + 2 <= code.length && is_close(state, target + 2)) {
+            // Prior to 5.4.5, scope ends on the close line
+            // After 5.4.5, scope ends before the close line
+            // See: https://www.lua.org/bugs.html#5.4.4-6
+            
+            // (In 5.4, there is always a close for tfor)
+            closeIsInScope = (r.getDeclaration(A, target).end == target + 2); 
+          }
+          
+          TForBlock block = TForBlock.make54(
+            state.function, line + 1, target + 2, A, C,
+            get_close_type(state, close), close,
+            forvarClose, closeIsInScope,
+            controlCount
+          );
           block.handleVariableDeclarations(r);
           blocks.add(block);
           break;
@@ -651,9 +693,9 @@ public class ControlFlowHandler {
           );
           unredirect(state, loopback, end, j.line, loopback);
         }
-        if(loop == null && j.line - 5 >= 1 && state.code.op(j.line - 3) == Op.CLOSE
+        if(loop == null && j.line - 5 >= 1 && is_nonjump_close(state, j.line - 3)
           && is_jmp_raw(state, j.line - 2) && state.code.target(j.line - 2) == end
-          && state.code.op(j.line - 1) == Op.CLOSE
+          && is_nonjump_close(state, j.line - 1)
         ) {
           b = j.previous;
           while(b != null && !(is_conditional(b) && b.line2 == j.line - 5)) {
@@ -662,15 +704,11 @@ public class ControlFlowHandler {
           if(b != null) {
             Branch skip = state.branches[j.line - 2];
             if(skip == null) throw new IllegalStateException();
-            int scopeEnd = j.line - 3;
-            if(state.function.header.version.closeinscope.get()) {
-              scopeEnd = j.line - 2;
-            }
-            // TODO: make this work better with new close system
+            int closeLine = state.function.header.version.closesemantics.get() == Version.CloseSemantics.LUA54 ? j.line - 3 : j.line - 1;
             loop = new RepeatBlock(
               state.function, b.cond, j.targetFirst, j.line + 1,
-              CloseType.NONE, -1,
-              true, scopeEnd
+              get_close_type(state, closeLine), closeLine,
+              false, -1
             );
             remove_branch(state, b);
             remove_branch(state, skip);
@@ -688,11 +726,30 @@ public class ControlFlowHandler {
               }
             }
           }
-          loop = new AlwaysLoop(state.function, loopback, end, get_close_type(state, end - 2), end - 2, repeat);
-          unredirect(state, loopback, end, j.line, loopback);
+          boolean gotoheuristic = false;
+          if(state.function.header.version.usegoto.get()) {
+            Branch k = j.previous;
+            while(k != null && k.line >= loopback) {
+              if((k.type == Branch.Type.jump
+                  || (k.type == Branch.Type.test || k.type == Branch.Type.comparison)
+                  && state.function.header.version.useifgotorewrite.get() != Maybe.NO)
+                && (k.targetFirst < loopback || k.targetSecond > end)
+              ) {
+                // Decompilation as loop may require a goto anyway to exit
+                gotoheuristic = true;
+              }
+              k = k.previous;
+            }
+          }
+          if(!gotoheuristic) {
+            loop = new AlwaysLoop(state.function, loopback, end, get_close_type(state, end - 2), end - 2, repeat);
+            unredirect(state, loopback, end, j.line, loopback);
+          }
         }
-        remove_branch(state, j);
-        blocks.add(loop);
+        if(loop != null) {
+          remove_branch(state, j);
+          blocks.add(loop);
+        }
       }
       j = j.previous;
     }
@@ -735,9 +792,9 @@ public class ControlFlowHandler {
                 get_close_type(state, statementLine), statementLine,
                 true, statementLine
               );
-            } else if(state.function.header.version.closesemantics.get() == Version.CloseSemantics.JUMP) {
+            } else if(state.function.header.version.closesemantics.get() == Version.CloseSemantics.JUMP && is_close(state, b.targetFirst)) {
               block = new RepeatBlock(
-                state.function, b.cond, b.targetSecond, b.targetFirst,
+                state.function, b.cond, b.targetSecond, b.targetFirst + 1,
                 get_close_type(state, b.targetFirst), b.targetFirst,
                 false, -1
               );
@@ -784,12 +841,17 @@ public class ControlFlowHandler {
     if(!stack.isEmpty() && stack_reach(state, stack) <= line) {
       Branch top = stack.pop();
       int literalEnd = state.code.target(top.targetFirst - 1);
-      if(state.function.header.version.useifbreakrewrite.get() && state.function.header.version.usegoto.get() && top.targetFirst + 1 == top.targetSecond && is_jmp(state, top.targetFirst)) {
-        // If this were actually an if statement, it would have been rewritten. It hasn't been, so it isn't...
-        block = new IfThenEndBlock(state.function, state.r, top.cond.inverse(), top.targetFirst - 1, top.targetFirst - 1);
-        block.addStatement(new Goto(state.function, top.targetFirst - 1, top.targetSecond));
-        state.labels[top.targetSecond] = true;
-      } else {
+      if(state.function.header.version.useifgotorewrite.get() != Maybe.NO && top.targetFirst + 1 == top.targetSecond && is_jmp(state, top.targetFirst)) {
+        boolean isbreakrewrite = state.function.header.version.useifbreakrewrite.get() && is_break_jmp(state, top.targetFirst); 
+        boolean isgotorewrite = !isbreakrewrite && state.function.header.version.useifgotorewrite.get() == Maybe.YES;
+        if(isbreakrewrite || isgotorewrite) {
+          // If this were actually an if statement, it would have been rewritten. It hasn't been, so it isn't...
+          block = new IfThenEndBlock(state.function, state.r, top.cond.inverse(), top.targetFirst - 1, top.targetFirst - 1);
+          block.addStatement(new Goto(state.function, top.targetFirst - 1, top.targetSecond));
+          state.labels[top.targetSecond] = true;
+        }
+      }
+      if(block == null) {
         block = new IfThenEndBlock(
           state.function, state.r, top.cond, top.targetFirst, top.targetSecond,
           get_close_type(state, top.targetSecond - 1), top.targetSecond - 1,
@@ -856,6 +918,11 @@ public class ControlFlowHandler {
       && !splits_decl(hanging.line, hanging.targetFirst, resolver.line, declList)
       && !(
         state.function.header.version.useifbreakrewrite.get()
+        && hanging.targetFirst == resolver.line - 1
+        && is_break_jmp(state, resolver.line - 1)
+      )
+      && !(
+        state.function.header.version.useifgotorewrite.get() == Maybe.YES
         && hanging.targetFirst == resolver.line - 1
         && is_jmp(state, resolver.line - 1)
       )
@@ -936,9 +1003,20 @@ public class ControlFlowHandler {
         }
         
         boolean handled = false;
+        boolean isbreakgotocandidate = true;
+        boolean iselsecandidate = true;
+        if(state.function.header.version.usedeadclose.get()) {
+          if(b.deadclose) {
+            iselsecandidate = false;
+          } else if(b.line - 1 >= 1 && is_close(state, b.line - 1)) {
+            /* do nothing */
+          } else {
+            isbreakgotocandidate = false;
+          }
+        }
         
         Block breakable = enclosing_breakable_block(state, line);
-        if(breakable != null && (b.targetFirst == breakable.end || b.targetFirst == state.resolved[breakable.end])) {
+        if(isbreakgotocandidate && breakable != null && (b.targetFirst == breakable.end || b.targetFirst == state.resolved[breakable.end])) {
           Break block = new Break(state.function, b.line, b.targetFirst);
           if(!hanging.isEmpty() && hanging.peek().targetSecond == b.targetFirst
             && enclosing_block(state, hanging.peek().line) == enclosing
@@ -954,7 +1032,7 @@ public class ControlFlowHandler {
           handled = true;
         }
         
-        if(!handled && state.function.header.version.usegoto.get() && breakable != null && !breakable.contains(b.targetFirst) && state.resolved[b.targetFirst] != state.resolved[breakable.end]) {
+        if(!handled && isbreakgotocandidate && state.function.header.version.usegoto.get() && breakable != null && !breakable.contains(b.targetFirst) && state.resolved[b.targetFirst] != state.resolved[breakable.end]) {
           Goto block = new Goto(state.function, b.line, b.targetFirst);
           if(!hanging.isEmpty() && hanging.peek().targetSecond == b.targetFirst
             && enclosing_block(state, hanging.peek().line) == enclosing
@@ -969,7 +1047,7 @@ public class ControlFlowHandler {
           handled = true;
         }
         
-        if(!handled && !stack.isEmpty() && stack.peek().targetSecond - 1 == b.line && enclosing.contains(b.line, b.targetSecond) && b.targetSecond > b.line) {
+        if(!handled && iselsecandidate && !stack.isEmpty() && stack.peek().targetSecond - 1 == b.line && enclosing.contains(b.line, b.targetSecond) && b.targetSecond > b.line) {
           Branch top = stack.peek();
           while(top != null && top.targetSecond - 1 == b.line && splits_decl(top.line, top.targetFirst, top.targetSecond, declList)) {
             Block if_block = resolve_if_stack(state, stack, top.targetSecond);
@@ -1001,6 +1079,7 @@ public class ControlFlowHandler {
         
         if(
           !handled
+          && iselsecandidate
           && breakable != null
           && line + 1 < state.branches.length && state.branches[line + 1] != null
           && state.branches[line + 1].type == Branch.Type.jump
@@ -1008,11 +1087,15 @@ public class ControlFlowHandler {
           for(int i = 0; i < hanging.size(); i++) {
             Branch hanger = hanging.peek(i);
             if(
-              state.resolved[hanger.targetSecond] == state.resolved[breakable.end]
+              (
+                state.resolved[hanger.targetSecond] == state.resolved[breakable.end]
+                || state.function.header.version.usegoto.get()
+                  && !breakable.contains(hanger.targetSecond)
+              )
               && line + 1 < state.branches.length && state.branches[line + 1] != null
               && state.branches[line + 1].targetFirst == hanger.targetSecond
               && !splits_decl(hanger.line, hanger.targetFirst, b.line, declList) // if else
-              && !splits_decl(b.line, b.line + 1, b.line + 2, declList) // else break
+              && !splits_decl(b.line, b.line + 1, b.line + 2, declList) // else break/goto
               && !splits_decl(hanger.line, hanger.targetFirst, b.line + 2, declList) // full
             ) {
               // resolve intervening hangers
@@ -1023,7 +1106,7 @@ public class ControlFlowHandler {
                 resolve_hanger(state, declList, stack, hanging.pop(), hangingResolver.peek());
               }
               
-              // else break
+              // else break or else goto
               Branch top = hanging.pop();
               if(!hangingResolver.isEmpty() && hangingResolver.peek().targetFirst == top.targetSecond) {
                 hangingResolver.pop();
@@ -1040,6 +1123,26 @@ public class ControlFlowHandler {
         
         if(
           !handled
+          && iselsecandidate
+          && line - 1 >= 1) {
+          Block splittable = enclosing_block(state, line - 1);
+          if(
+            splittable != null && !splittable.breakable() && splittable.isSplitable()
+            && state.resolved[b.targetFirst] == splittable.end + 1
+          ) {
+            // split if else
+            Block[] split = splittable.split(b.line - 1, get_close_type(state, b.line - 2));
+            for(Block block : split) {
+              state.blocks.add(block); 
+            }
+            remove_branch(state, b);
+            handled = true;
+          }
+        }
+        
+        if(
+          !handled
+          && iselsecandidate
           && breakable != null && breakable.isSplitable()
           && state.resolved[b.targetFirst] == breakable.getUnprotectedTarget()
           && line + 1 < state.branches.length && state.branches[line + 1] != null
@@ -1057,6 +1160,7 @@ public class ControlFlowHandler {
         
         if(
           !handled
+          && iselsecandidate
           && !stack.isEmpty() && stack.peek().targetSecond == b.targetFirst
           && line + 1 < state.branches.length && state.branches[line + 1] != null
           && state.branches[line + 1].type == Branch.Type.jump
@@ -1079,6 +1183,7 @@ public class ControlFlowHandler {
         
         if(
           !handled
+          && iselsecandidate
           && !hanging.isEmpty() && hanging.peek().targetSecond == b.targetFirst
           && line + 1 < state.branches.length && state.branches[line + 1] != null
           && state.branches[line + 1].type == Branch.Type.jump
@@ -1102,7 +1207,7 @@ public class ControlFlowHandler {
           handled = true; // TODO:
         }
         
-        if(!handled && (state.function.header.version.usegoto.get() || state.r.isNoDebug)) {
+        if(!handled && isbreakgotocandidate && (state.function.header.version.usegoto.get() || state.r.isNoDebug)) {
           Goto block = new Goto(state.function, b.line, b.targetFirst);
           if(!hanging.isEmpty() && hanging.peek().targetSecond == b.targetFirst && enclosing_block(state, hanging.peek().line) == enclosing) {
             hangingResolver.push(b);
@@ -1131,7 +1236,7 @@ public class ControlFlowHandler {
           throw new IllegalStateException();
         }
       } else if(state.function.header.version.usegoto.get() || state.r.isNoDebug) {
-        if(state.function.header.version.useifbreakrewrite.get() || state.r.isNoDebug) {
+        if(state.function.header.version.useifgotorewrite.get() != Maybe.NO || state.r.isNoDebug) {
           Block block = new IfThenEndBlock(state.function, state.r, top.cond.inverse(), top.targetFirst - 1, top.targetFirst - 1);
           block.addStatement(new Goto(state.function, top.targetFirst - 1, top.targetSecond));
           state.blocks.add(block);
@@ -1306,7 +1411,7 @@ public class ControlFlowHandler {
             state.blocks.add(new IfThenElseBlock(state.function, FixedCondition.TRUE, begin, b.line + 1, end, CloseType.NONE, -1));
             state.blocks.add(new ElseEndBlock(state.function, b.line + 1, end, CloseType.NONE, -1));
             remove_branch(state, b);
-          } else {
+          } else if(!state.function.header.version.usegoto.get()) {
             state.blocks.add(loop);
             Branch b2 = b;
             while(b2 != null) {
@@ -1366,7 +1471,26 @@ public class ControlFlowHandler {
         boolean needsDoEnd = true;
         for(Block block : state.blocks) {
           if(block.contains(decl.begin)) {
-            if(block.scopeEnd() == decl.end) {
+            int scopeEnd = block.scopeEnd();
+            if(block.hasCloseLine()) {
+              int closeLine = block.getCloseLine();
+              int closeRegister = get_close_value(state, closeLine);
+              if(closeRegister <= decl.register) {
+                CloseType closeType = block.getCloseType();
+                if(closeType == CloseType.CLOSE) {
+                  scopeEnd = closeLine - 1;
+                } else if(closeType == CloseType.CLOSE54) {
+                  scopeEnd = closeLine - 1;
+                  if(decl.end == closeLine) {
+                    // Prior to 5.4.5, scope ends on the close line
+                    // After 5.4.5, scope ends before the close line
+                    // See: https://www.lua.org/bugs.html#5.4.4-6 
+                    scopeEnd = closeLine;
+                  }
+                }
+              }
+            }
+            if(scopeEnd == decl.end) {
               block.useScope();
               needsDoEnd = false;
               break;
@@ -1725,11 +1849,22 @@ public class ControlFlowHandler {
     }
   }
   
+  private static boolean is_break_jmp(State state, int line) {
+    if(is_jmp(state, line)) {
+      int target = state.code.target(line);
+      Block breakable = enclosing_breakable_block(state, line);
+      return target == breakable.end || target == state.resolved[breakable.end];
+    }
+    return false;
+  }
+  
   private static boolean is_close(State state, int line) {
     Code code = state.code;
     Op op = code.op(line);
     if(op == Op.CLOSE) {
       return true;
+    } else if(op == Op.CLOSE55) {
+      return code.B(line) == 0;
     } else if(op == Op.JMP52) {
       int target = code.target(line);
       if(target == line + 1) {
@@ -1746,10 +1881,22 @@ public class ControlFlowHandler {
     }
   }
   
-  private static int get_close_value(State state, int line) {
+  private static boolean is_nonjump_close(State state, int line) {
     Code code = state.code;
     Op op = code.op(line);
     if(op == Op.CLOSE) {
+      return true;
+    } else if(op == Op.CLOSE55) {
+      return code.B(line) == 0;
+    } else {
+      return false;
+    }
+  }
+  
+  private static int get_close_value(State state, int line) {
+    Code code = state.code;
+    Op op = code.op(line);
+    if(op == Op.CLOSE || op == Op.CLOSE55) {
       return code.A(line);
     } else if(op == Op.JMP52) {
       return code.A(line) - 1;
@@ -1763,7 +1910,7 @@ public class ControlFlowHandler {
       return CloseType.NONE;
     } else {
       Op op = state.code.op(line);
-      if(op == Op.CLOSE) {
+      if(op == Op.CLOSE || op == Op.CLOSE55) {
         return state.function.header.version.closesemantics.get() == Version.CloseSemantics.LUA54 ? CloseType.CLOSE54 : CloseType.CLOSE;
       } else {
         return CloseType.JMP;
@@ -1794,12 +1941,13 @@ public class ControlFlowHandler {
       case GETUPVAL:
       case GETTABUP: case GETTABUP54:
       case GETTABLE: case GETTABLE54: case GETI: case GETFIELD:
-      case NEWTABLE50: case NEWTABLE: case NEWTABLE54:
+      case NEWTABLE50: case NEWTABLE: case NEWTABLE54: case NEWTABLE55:
       case ADD: case SUB: case MUL: case DIV: case IDIV: case MOD: case POW: case BAND: case BOR: case BXOR: case SHL: case SHR:
       case UNM: case NOT: case LEN: case BNOT:
       case CONCAT: case CONCAT54:
       case CLOSURE:
       case TESTSET: case TESTSET54:
+      case GETVARG:
         return r.isLocal(code.A(line), line);
       case ADD54: case SUB54: case MUL54: case DIV54: case IDIV54: case MOD54: case POW54: case BAND54: case BOR54: case BXOR54: case SHL54: case SHR54:
       case ADDK: case SUBK: case MULK: case DIVK: case IDIVK: case MODK: case POWK: case BANDK: case BORK: case BXORK:
@@ -1828,22 +1976,23 @@ public class ControlFlowHandler {
       case TAILCALL: case TAILCALL54:
       case RETURN: case RETURN54: case RETURN0: case RETURN1:
       case FORLOOP: case FORLOOP54:
-      case FORPREP: case FORPREP54:
+      case FORPREP: case FORPREP54: case FORPREP55:
       case TFORCALL: case TFORCALL54:
       case TFORLOOP: case TFORLOOP52: case TFORLOOP54:
-      case TFORPREP: case TFORPREP54:
-      case CLOSE:
+      case TFORPREP: case TFORPREP54: case TFORPREP55:
+      case CLOSE: case CLOSE55:
+      case ERRNNIL:
       case TBC: // TODO: ?
         return true;
       case TEST50:
         return code.A(line) != code.B(line) && r.isLocal(code.A(line), line);
-      case SELF: case SELF54:
+      case SELF: case SELF54: case SELF55:
         return r.isLocal(code.A(line), line) || r.isLocal(code.A(line) + 1, line);
       case EQ: case LT: case LE:
       case EQ54: case LT54: case LE54:
       case EQK: case EQI: case LTI: case LEI: case GTI: case GEI:
       case TEST: case TEST54:
-      case SETLIST50: case SETLISTO: case SETLIST: case SETLIST52: case SETLIST54:
+      case SETLIST50: case SETLISTO: case SETLIST: case SETLIST52: case SETLIST54: case SETLIST55:
       case VARARGPREP:
       case EXTRAARG:
       case EXTRABYTE:

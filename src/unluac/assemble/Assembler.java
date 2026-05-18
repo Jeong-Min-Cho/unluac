@@ -668,7 +668,7 @@ class AssemblerChunk {
     CodeExtract extract = getCodeExtract();
     
     if(integer == null) {
-      integer = BIntegerType.create54();
+      integer = BIntegerType.create54(true);
       sizeT = integer;
     }
     
@@ -679,7 +679,7 @@ class AssemblerChunk {
       typemap = version.getTypeMap();
     }
     
-    LHeader lheader = new LHeader(format, endianness, integer, sizeT, bool, number, linteger, lfloat, string, constant, abslineinfo, local, upvalue, function, extract);
+    LHeader lheader = new LHeader(format, endianness, integer, integer, sizeT, bool, number, linteger, lfloat, string, constant, abslineinfo, local, upvalue, function, extract);
     BHeader header = new BHeader(version, lheader, typemap);
     LFunction main = convert_function(header, this.main);
     header = new BHeader(version, lheader, typemap, main);

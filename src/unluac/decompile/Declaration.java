@@ -20,6 +20,8 @@ public class Declaration {
    */
   public boolean forLoopExplicit = false;
   
+  public boolean namedVararg = false;
+  
   public Declaration(LLocal local, Code code) {
     int adjust = 0;
     if(local.start >= 1) {

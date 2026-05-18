@@ -90,6 +90,9 @@ public class Code {
     return C - extractor.C.max() / 2;
   }
   
+  public int vC(int line) {
+    return extractor.vC.extract(code[line - 1]);
+  }
   
   /**
    * Returns the k field of the instruction at the given line (1 is true, 0 is false).
@@ -111,6 +114,10 @@ public class Code {
   public int sB(int line) {
     int B = B(line);
     return B - extractor.B.max() / 2;
+  }
+  
+  public int vB(int line) {
+    return extractor.vB.extract(code[line - 1]);
   }
   
   /**

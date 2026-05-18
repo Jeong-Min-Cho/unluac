@@ -12,12 +12,12 @@ abstract public class BIntegerType extends BObjectType<BInteger> {
     return new BIntegerType50(signed, intSize, allownegative);
   }
   
-  public static BIntegerType create54() {
-    return new BIntegerType54();
+  public static BIntegerType create54(boolean invert) {
+    return new BIntegerType54(invert);
   }
   
   public int getSize() {
-    throw new IllegalStateException();
+    throw new UnsupportedOperationException();
   }
   
   public BInteger create(int n) {
@@ -118,19 +118,41 @@ class BIntegerType50 extends BIntegerType {
 
 class BIntegerType54 extends BIntegerType {
 
-  public BIntegerType54() {
-    
+  public final boolean invert;
+  private final byte notend;
+  private final byte end;
+  
+  public BIntegerType54(boolean invert) {
+    this.invert = invert;
+    if(!invert) {
+      end = 0;
+      notend = (byte) 0x80;
+    } else {
+      end = (byte) 0x80;
+      notend = 0;
+    }
   }
   
   @Override
   public BInteger parse(ByteBuffer buffer, BHeader header) {
     long x = 0;
     byte b;
+    int bits = 7;
     do {
       b = buffer.get();
       x = (x << 7) | (b & 0x7F);
-    } while((b & 0x80) == 0);
-    if(Integer.MIN_VALUE <= x && x <= Integer.MAX_VALUE) {
+      bits += 7;
+    } while((b & 0x80) != (end & 0x80) && bits <= 63);
+    if((b & 0x80) != (end & 0x80)) {
+      BigInteger bigx = BigInteger.valueOf(x);
+      do {
+        b = buffer.get();
+        bigx = bigx.shiftLeft(7);
+        bigx.add(BigInteger.valueOf(b & 0x7F));
+        // bits += 7;
+      } while((b & 0x80) != (end & 0x80));
+      return new BInteger(bigx);
+    } else if(x <= Integer.MAX_VALUE) {
       return new BInteger((int) x);
     } else {
       return new BInteger(BigInteger.valueOf(x));
@@ -140,10 +162,44 @@ class BIntegerType54 extends BIntegerType {
   @Override
   public void write(OutputStream out, BHeader header, BInteger object) throws IOException {
     byte[] bytes = object.compressedBytes();
-    for(int i = bytes.length - 1; i >=1; i--) {
-      out.write(bytes[i]);
+    for(int i = bytes.length - 1; i >= 1; i--) {
+      out.write(bytes[i] | notend);
     }
-    out.write(bytes[0] | 0x80);
+    out.write(bytes[0] | end);
+  }
+  
+}
+
+class BIntegerTypeWrapper extends BIntegerType {
+  
+  public final BIntegerType base;
+  public final boolean signed;
+  public final int size;
+  
+  public BIntegerTypeWrapper(BIntegerType base, boolean signed, int size) {
+    this.base = base;
+    this.signed = signed;
+    this.size = size;
+  }
+  
+  @Override
+  public BInteger parse(ByteBuffer buffer, BHeader header) {
+    BInteger inner = base.parse(buffer, header);
+    if(!inner.checkSize(size)) throw new IllegalStateException("Integer out of range: " + inner.toString());
+    if(signed) {
+      return inner.convert();
+    } else {
+      return inner;
+    }
+  }
+  
+  @Override
+  public void write(OutputStream out, BHeader header, BInteger object) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+  
+  public int getSize() {
+    return size;
   }
   
 }

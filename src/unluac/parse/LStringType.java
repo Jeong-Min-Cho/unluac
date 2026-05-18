@@ -3,6 +3,8 @@ package unluac.parse;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import unluac.Version;
 
@@ -14,6 +16,7 @@ public abstract class LStringType extends BObjectType<LString> {
       case LUA50: return new LStringType50();
       case LUA53: return new LStringType53();
       case LUA54: return new LStringType54();
+      case LUA55: return new LStringType55();
       default: throw new IllegalStateException();
     }
   }
@@ -171,3 +174,49 @@ class LStringType54 extends LStringType {
   }
 }
 
+class LStringType55 extends LStringType {
+  
+  private List<LString> saved = new ArrayList<LString>();
+  
+  @Override
+  public LString parse(final ByteBuffer buffer, BHeader header) {
+    BInteger sizeT = header.sizeT.parse(buffer, header);
+    if(sizeT.asInt() == 0) {
+      BInteger idx = header.integer.parse(buffer, header); // TODO: should be unsigned
+      if(idx.signum() == 0) return LString.NULL;
+      return saved.get(idx.asInt() - 1);
+    } else {
+      final StringBuilder b = this.b.get();
+      b.setLength(0);
+      sizeT.iterate(new Runnable() {
+        
+        @Override
+        public void run() {
+          b.append((char) (0xFF & buffer.get()));
+        }
+        
+      });
+      char last = b.charAt(b.length() - 1);
+      b.delete(b.length() - 1, b.length());
+      String s = b.toString();
+      if(header.debug) {
+        System.out.println("-- parsed <string> \"" + s + "\"");
+      }
+      LString result = new LString(s, last);
+      saved.add(result);
+      return result;
+    }
+  }
+  
+  @Override
+  public void write(OutputStream out, BHeader header, LString string) throws IOException {
+    if(string == LString.NULL) {
+      header.sizeT.write(out, header, header.sizeT.create(0));
+    } else {
+      header.sizeT.write(out, header, header.sizeT.create(string.value.length() + 1));
+      for(int i = 0; i < string.value.length(); i++) {
+        out.write(string.value.charAt(i));
+      }
+    }
+  }
+}

@@ -233,6 +233,7 @@ public class TestFiles {
     new TestFile("close10"),
     new TestFile("close11"),
     new TestFile("close12"),
+    new TestFile("close13"), // TODO: enforce no goto
     new TestFile("always01"),
     new TestFile("always02"),
     new TestFile("always03"),
@@ -282,6 +283,7 @@ public class TestFiles {
     new TestFile("53_expression"),
     new TestFile("53_expression02"),
     new TestFile("54_tbc01"),
+    new TestFile("55_namedvararg01"),
   };
   
   public static TestSuite suite = new TestSuite(null, ".\\test\\src\\", tests);

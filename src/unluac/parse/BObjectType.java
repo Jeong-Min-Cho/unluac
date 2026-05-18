@@ -16,15 +16,20 @@ abstract public class BObjectType<T extends BObject>  {
   abstract public void write(OutputStream out, BHeader header, T object) throws IOException;
   
   public final BList<T> parseList(ByteBuffer buffer, BHeader header) {
-    return parseList(buffer, header, Version.ListLengthMode.STRICT, null);
+    return parseList(buffer, header, Version.ListLengthMode.STRICT, null, false, 0);
+  }
+  
+  public final BList<T> parseListAlign(ByteBuffer buffer, BHeader header, boolean align, int alignment) {
+    return parseList(buffer, header, Version.ListLengthMode.STRICT, null, align, alignment);
   }
   
   public final BList<T> parseList(ByteBuffer buffer, BHeader header, Version.ListLengthMode mode) {
-    return parseList(buffer, header, mode, null);
+    return parseList(buffer, header, mode, null, false, 0);
   }
   
-  public final BList<T> parseList(ByteBuffer buffer, BHeader header, Version.ListLengthMode mode, BInteger knownLength) {
+  public final BList<T> parseList(ByteBuffer buffer, BHeader header, Version.ListLengthMode mode, BInteger knownLength, boolean align, int alignment) {
     BInteger length = header.integer.parse(buffer, header);
+    if(align && length.signum() > 0) LFunctionType.align(buffer, alignment);
     switch(mode) {
       case STRICT:
         break;

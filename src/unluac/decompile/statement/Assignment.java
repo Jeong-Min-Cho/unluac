@@ -19,6 +19,7 @@ public class Assignment extends Statement {
   
   private boolean allnil = true;
   private boolean declare = false;
+  private boolean globaldeclare = false;
   private int register = -1;
   
   public Assignment() {
@@ -168,6 +169,10 @@ public class Assignment extends Statement {
     declare = true;
   }
   
+  public void globalDeclare() {
+    globaldeclare = true;
+  }
+  
   public boolean isDeclaration() {
     return declare;
   }
@@ -219,6 +224,8 @@ public class Assignment extends Statement {
       }
       if(declare) {
         out.print("local ");
+      } else if(globaldeclare) {
+        out.print("global ");
       }
       if(!functionSugar) {
         targets.get(0).print(d, out, declare);

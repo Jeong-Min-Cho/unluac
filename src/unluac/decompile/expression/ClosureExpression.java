@@ -1,5 +1,6 @@
 package unluac.decompile.expression;
 
+import unluac.Version.VarArgType;
 import unluac.decompile.Decompiler;
 import unluac.decompile.Output;
 import unluac.decompile.Walker;
@@ -96,9 +97,10 @@ public class ClosureExpression extends Expression {
   private void printMain(Output out, boolean includeFirst) {
     out.print("(");
     int start = includeFirst ? 0 : 1;
+    int i = start + 1;
     if(function.numParams > start) {
       new VariableTarget(d.declList[start]).print(d, out, false);
-      for(int i = start + 1; i < function.numParams; i++) {
+      for(; i < function.numParams; i++) {
         out.print(", ");
         new VariableTarget(d.declList[i]).print(d, out, false);
       }
@@ -108,6 +110,11 @@ public class ClosureExpression extends Expression {
         out.print(", ...");
       } else {
         out.print("...");
+      }
+      if(d.getVersion().varargtype.get() == VarArgType.NAMED) {
+        if(i < d.declList.length && !d.declList[i].name.startsWith("(")) {
+          new VariableTarget(d.declList[i]).print(d, out, false);
+        }
       }
     }
     out.print(")");

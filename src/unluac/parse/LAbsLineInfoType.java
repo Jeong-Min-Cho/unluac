@@ -8,15 +8,15 @@ public class LAbsLineInfoType extends BObjectType<LAbsLineInfo> {
 
   @Override
   public LAbsLineInfo parse(ByteBuffer buffer, BHeader header) {
-    int pc = header.integer.parse(buffer, header).asInt();
-    int line = header.integer.parse(buffer, header).asInt();
+    int pc = header.vinteger.parse(buffer, header).asInt();
+    int line = header.vinteger.parse(buffer, header).asInt();
     return new LAbsLineInfo(pc, line);
   }
 
   @Override
   public void write(OutputStream out, BHeader header, LAbsLineInfo object) throws IOException {
-    header.integer.write(out, header, new BInteger(object.pc));
-    header.integer.write(out, header, new BInteger(object.line));
+    header.vinteger.write(out, header, new BInteger(object.pc));
+    header.vinteger.write(out, header, new BInteger(object.line));
   }
 
 }
