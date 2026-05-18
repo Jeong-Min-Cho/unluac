@@ -159,3 +159,34 @@ public class LNumberType extends BObjectType<LNumber> {
   }
 
 }
+
+class LNumberTypeWrapper extends LNumberType {
+  
+  public final BIntegerType itype;
+  
+  public LNumberTypeWrapper(BIntegerType itype, int size) {
+    super(size, true, NumberMode.MODE_INTEGER);
+    this.itype = itype;
+  }
+  
+  @Override
+  public LNumber parse(ByteBuffer buffer, BHeader header) {
+    BInteger i = itype.parse(buffer, header);
+    LNumber value = null;
+    switch(size) {
+      case 4:
+        value = new LIntNumber(i.asInt());
+        break;
+      case 8:
+        value = new LLongNumber(i.asLong());
+        break;
+    }
+    return value;
+  }
+  
+  @Override
+  public void write(OutputStream out, BHeader header, LNumber n) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+  
+}

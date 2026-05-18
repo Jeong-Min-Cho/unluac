@@ -77,6 +77,8 @@ public class CodeExtract {
         A = new Field(BITFIELD_A, sizeA, sizeB + sizeC + sizeOp);
         B = new Field(BITFIELD_B, sizeB, sizeB + sizeOp);
         C = new Field(BITFIELD_C, sizeC, sizeOp);
+        vB = null;
+        vC = null;
         k = null;
         Ax = null;
         sJ = null;
@@ -89,6 +91,8 @@ public class CodeExtract {
         A = new Field(BITFIELD_A, 8, 6);
         B = new Field(BITFIELD_B, 9, 23);
         C = new Field(BITFIELD_C, 9, 14);
+        vB = null;
+        vC = null;
         k = null;
         Ax = new Field(BITFIELD_AX, 26, 6);
         sJ = null;
@@ -101,6 +105,8 @@ public class CodeExtract {
         A = new Field(BITFIELD_A, 8, 7);
         B = new Field(BITFIELD_B, 8, 16);
         C = new Field(BITFIELD_C, 8, 24);
+        vB = new Field(BITFIELD_B, 6, 16);
+        vC = new Field(BITFIELD_C, 10, 22);
         k = new Field(BITFIELD_K, 1, 15);
         Ax = new Field(BITFIELD_AX, 25, 7);
         sJ = new Field(BITFIELD_AX, 25, 7, (1 << 24) - 1);
@@ -133,6 +139,8 @@ public class CodeExtract {
       case B: return B;
       case C: return C;
       case k: return k;
+      case vB: return vB;
+      case vC: return vC;
       case Ax: return Ax;
       case sJ: return sJ;
       case Bx: return Bx;
@@ -156,6 +164,8 @@ public class CodeExtract {
   public final Field B;
   public final Field C;
   public final Field k;
+  public final Field vB;
+  public final Field vC;
   public final Field Ax;
   public final Field sJ;
   public final Field Bx;

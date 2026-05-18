@@ -7,7 +7,7 @@ import unluac.Configuration;
 public class RunTest {
 
   public static void main(String[] args) throws IOException {
-    LuaSpec spec = new LuaSpec(0x54);
+    LuaSpec spec = new LuaSpec(0x55);
     UnluacSpec uspec = new UnluacSpec();
     //uspec.disassemble = true;
     Configuration config = new Configuration();

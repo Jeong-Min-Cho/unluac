@@ -58,7 +58,7 @@ public class Registers {
   }
   
   public boolean isLocal(int register, int line) {
-    if(register < 0 || register >= registers) return false;
+    if(register < 0) return false;
     return decls[register][line] != null;
   }
   
@@ -74,9 +74,8 @@ public class Registers {
   }
   
   public boolean isNewLocal(int register, int line) {
-    if(register < 0 || register >= registers) return false;
     Declaration decl = decls[register][line];
-    return decl != null && decl.begin == line && !decl.forLoop && !decl.forLoopExplicit;
+    return decl != null && decl.begin == line && !decl.forLoop && !decl.forLoopExplicit && !decl.namedVararg;
   }
   
   public List<Declaration> getNewLocals(int line) {
@@ -95,7 +94,6 @@ public class Registers {
   }
   
   public Declaration getDeclaration(int register, int line) {
-    if(register < 0 || register >= registers) return null;
     return decls[register][line];
   }
   
@@ -115,9 +113,6 @@ public class Registers {
   }
   
   public Expression getExpression(int register, int line) {
-    if(register < 0 || register >= registers) {
-      return ConstantExpression.createNil(0);
-    }
     if(isLocal(register, line - 1)) {
       return new LocalVariable(getDeclaration(register, line - 1));
     } else {
@@ -142,9 +137,6 @@ public class Registers {
   }
   
   public Expression getValue(int register, int line) {
-    if(register < 0 || register >= registers) {
-      return ConstantExpression.createNil(0);
-    }
     if(isNoDebug) {
       return getExpression(register, line);
     } else {
@@ -153,12 +145,10 @@ public class Registers {
   }
 
   public int getUpdated(int register, int line) {
-    if(register < 0 || register >= registers) return 0;
     return updated[register][line];
   }
   
   public void setValue(int register, int line, Expression expression) {
-    if(register >= registers) return;
     values[register][line] = expression;
     updated[register][line] = line;
   }

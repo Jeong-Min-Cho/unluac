@@ -13,6 +13,7 @@ import unluac.parse.LFunction;
 abstract public class ForBlock extends ContainerBlock {
 
   protected final int register;
+  protected final int varCount;
   protected final boolean forvarPreClose;
   
   protected Target target;
@@ -20,9 +21,10 @@ abstract public class ForBlock extends ContainerBlock {
   protected Expression stop;
   protected Expression step;
   
-  public ForBlock(LFunction function, int begin, int end, int register, CloseType closeType, int closeLine, boolean forvarPreClose) {
+  public ForBlock(LFunction function, int begin, int end, int register, int varCount, CloseType closeType, int closeLine, boolean forvarPreClose) {
     super(function, begin, end, closeType, closeLine, -1);
     this.register = register;
+    this.varCount = varCount;
     this.forvarPreClose = forvarPreClose;
   }
 

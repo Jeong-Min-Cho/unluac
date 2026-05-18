@@ -9,19 +9,22 @@ class OpV {
   public static final int LUA52 = 4;
   public static final int LUA53 = 8;
   public static final int LUA54 = 16;
+  public static final int LUA55 = 32;
+  
+  protected static final int LUA5455 = LUA54 | LUA55;
 }
 
 public enum Op {
   // Lua 5.1 Opcodes
-  MOVE("move", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.AR, OperandFormat.BR),
-  LOADK("loadk", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.AR, OperandFormat.BxK),
+  MOVE("move", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.AR, OperandFormat.BR),
+  LOADK("loadk", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.AR, OperandFormat.BxK),
   LOADBOOL("loadbool", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.B, OperandFormat.C),
   LOADNIL("loadnil", OpV.LUA50 | OpV.LUA51, OperandFormat.AR, OperandFormat.BR),
-  GETUPVAL("getupval", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.AR, OperandFormat.BU),
+  GETUPVAL("getupval", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.AR, OperandFormat.BU),
   GETGLOBAL("getglobal", OpV.LUA50 | OpV.LUA51, OperandFormat.AR, OperandFormat.BxK),
   GETTABLE("gettable", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.BR, OperandFormat.CRK),
   SETGLOBAL("setglobal", OpV.LUA50 | OpV.LUA51, OperandFormat.AR, OperandFormat.BxK),
-  SETUPVAL("setupval", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.AR, OperandFormat.BU),
+  SETUPVAL("setupval", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.AR, OperandFormat.BU),
   SETTABLE("settable", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.BRK, OperandFormat.CRK),
   NEWTABLE("newtable", OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.B, OperandFormat.C),
   SELF("self", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.BR, OperandFormat.CRK),
@@ -41,7 +44,7 @@ public enum Op {
   LE("le", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.A, OperandFormat.BRK, OperandFormat.CRK),
   TEST("test", OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.C),
   TESTSET("testset", OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.BR, OperandFormat.C),
-  CALL("call", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.AR, OperandFormat.B, OperandFormat.C),
+  CALL("call", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.AR, OperandFormat.B, OperandFormat.C),
   TAILCALL("tailcall", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.B),
   RETURN("return", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.B),
   FORLOOP("forloop", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.sBxJ),
@@ -49,18 +52,18 @@ public enum Op {
   TFORLOOP("tforloop", OpV.LUA50 | OpV.LUA51, OperandFormat.AR, OperandFormat.C),
   SETLIST("setlist", OpV.LUA51, OperandFormat.AR, OperandFormat.B, OperandFormat.C),
   CLOSE("close", OpV.LUA50 | OpV.LUA51 | OpV.LUA54, OperandFormat.AR),
-  CLOSURE("closure", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.AR, OperandFormat.BxF),
+  CLOSURE("closure", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.AR, OperandFormat.BxF),
   VARARG("vararg", OpV.LUA51 | OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.B),
   // Lua 5.2 Opcodes
   JMP52("jmp", OpV.LUA52 | OpV.LUA53, OperandFormat.A, OperandFormat.sBxJ),
-  LOADNIL52("loadnil", OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.AR, OperandFormat.B),
-  LOADKX("loadkx", OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.AR),
+  LOADNIL52("loadnil", OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.AR, OperandFormat.B),
+  LOADKX("loadkx", OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.AR),
   GETTABUP("gettabup", OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.BU, OperandFormat.CRK),
   SETTABUP("settabup", OpV.LUA52 | OpV.LUA53, OperandFormat.AU, OperandFormat.BRK, OperandFormat.CRK),
   SETLIST52("setlist", OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.B, OperandFormat.C),
   TFORCALL("tforcall", OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.C),
   TFORLOOP52("tforloop", OpV.LUA52 | OpV.LUA53, OperandFormat.AR, OperandFormat.sBxJ),
-  EXTRAARG("extraarg", OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.Ax),
+  EXTRAARG("extraarg", OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.Ax),
   // Lua 5.0 Opcodes
   NEWTABLE50("newtable", OpV.LUA50, OperandFormat.AR, OperandFormat.B, OperandFormat.C),
   SETLIST50("setlist", OpV.LUA50, OperandFormat.AR, OperandFormat.Bx),
@@ -74,79 +77,88 @@ public enum Op {
   BXOR("bxor", OpV.LUA53, OperandFormat.AR, OperandFormat.BRK, OperandFormat.CRK),
   SHL("shl", OpV.LUA53, OperandFormat.AR, OperandFormat.BRK, OperandFormat.CRK),
   SHR("shr", OpV.LUA53, OperandFormat.AR, OperandFormat.BRK, OperandFormat.CRK),
-  BNOT("bnot", OpV.LUA53 | OpV.LUA54, OperandFormat.AR, OperandFormat.BR),
+  BNOT("bnot", OpV.LUA53 | OpV.LUA5455, OperandFormat.AR, OperandFormat.BR),
   // Lua 5.4 Opcodes
-  LOADI("loadi", OpV.LUA54, OperandFormat.AR, OperandFormat.sBxI),
-  LOADF("loadf", OpV.LUA54, OperandFormat.AR, OperandFormat.sBxF),
-  LOADFALSE("loadfalse", OpV.LUA54, OperandFormat.AR),
-  LFALSESKIP("lfalseskip", OpV.LUA54, OperandFormat.AR),
-  LOADTRUE("loadtrue", OpV.LUA54, OperandFormat.AR),
-  GETTABUP54("gettabup", OpV.LUA54, OperandFormat.AR, OperandFormat.BU, OperandFormat.CKS),
-  GETTABLE54("gettable", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  GETI("geti", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CI),
-  GETFIELD("getfield", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CKS),
-  SETTABUP54("settabup", OpV.LUA54, OperandFormat.AU, OperandFormat.BK, OperandFormat.CRK54),
-  SETTABLE54("settable", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CRK54),
-  SETI("seti", OpV.LUA54, OperandFormat.AR, OperandFormat.BI, OperandFormat.CRK54),
-  SETFIELD("setfield", OpV.LUA54, OperandFormat.AR, OperandFormat.BKS, OperandFormat.CRK54),
+  LOADI("loadi", OpV.LUA5455, OperandFormat.AR, OperandFormat.sBxI),
+  LOADF("loadf", OpV.LUA5455, OperandFormat.AR, OperandFormat.sBxF),
+  LOADFALSE("loadfalse", OpV.LUA5455, OperandFormat.AR),
+  LFALSESKIP("lfalseskip", OpV.LUA5455, OperandFormat.AR),
+  LOADTRUE("loadtrue", OpV.LUA5455, OperandFormat.AR),
+  GETTABUP54("gettabup", OpV.LUA5455, OperandFormat.AR, OperandFormat.BU, OperandFormat.CKS),
+  GETTABLE54("gettable", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  GETI("geti", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CI),
+  GETFIELD("getfield", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CKS),
+  SETTABUP54("settabup", OpV.LUA5455, OperandFormat.AU, OperandFormat.BK, OperandFormat.CRK54),
+  SETTABLE54("settable", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CRK54),
+  SETI("seti", OpV.LUA5455, OperandFormat.AR, OperandFormat.BI, OperandFormat.CRK54),
+  SETFIELD("setfield", OpV.LUA5455, OperandFormat.AR, OperandFormat.BKS, OperandFormat.CRK54),
   NEWTABLE54("newtable", OpV.LUA54, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
   SELF54("self", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CRK54),
-  ADDI("addi", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CsI),
-  ADDK("addk", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
-  SUBK("subk", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
-  MULK("mulk", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
-  MODK("modk", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
-  POWK("powk", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
-  DIVK("divk", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
-  IDIVK("idivk", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
-  BANDK("bandk", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CKI),
-  BORK("bork", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CKI),
-  BXORK("bxork", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CKI),
-  SHRI("shri", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CsI),
-  SHLI("shli", OpV.LUA54, OperandFormat.AR, OperandFormat.CsI, OperandFormat.BR),
-  ADD54("add", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  SUB54("sub", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  MUL54("mul", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  MOD54("mod", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  POW54("pow", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  DIV54("div", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  IDIV54("idiv", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  BAND54("band", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  BOR54("bor", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  BXOR54("bxor", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  SHL54("shl", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  SHR54("shr", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
-  MMBIN("mmbin", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.C),
-  MMBINI("mmbini", OpV.LUA54, OperandFormat.AR, OperandFormat.BsI, OperandFormat.C, OperandFormat.k),
-  MMBINK("mmbink", OpV.LUA54, OperandFormat.AR, OperandFormat.BK, OperandFormat.C, OperandFormat.k),
-  CONCAT54("concat", OpV.LUA54, OperandFormat.AR, OperandFormat.B),
-  TBC("tbc", OpV.LUA54, OperandFormat.AR),
-  JMP54("jmp", OpV.LUA54, OperandFormat.sJ),
-  EQ54("eq", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.k),
-  LT54("lt", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.k),
-  LE54("le", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.k),
-  EQK("eqk", OpV.LUA54, OperandFormat.AR, OperandFormat.BK, OperandFormat.k),
-  EQI("eqi", OpV.LUA54, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
-  LTI("lti", OpV.LUA54, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
-  LEI("lei", OpV.LUA54, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
-  GTI("gti", OpV.LUA54, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
-  GEI("gei", OpV.LUA54, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
-  TEST54("test", OpV.LUA54, OperandFormat.AR, OperandFormat.k),
-  TESTSET54("testset", OpV.LUA54, OperandFormat.AR, OperandFormat.BR, OperandFormat.k),
-  TAILCALL54("tailcall", OpV.LUA54, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
-  RETURN54("return", OpV.LUA54, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
-  RETURN0("return0", OpV.LUA54, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
-  RETURN1("return1", OpV.LUA54, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
-  FORLOOP54("forloop", OpV.LUA54, OperandFormat.AR, OperandFormat.BxJn),
+  ADDI("addi", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CsI),
+  ADDK("addk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
+  SUBK("subk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
+  MULK("mulk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
+  MODK("modk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
+  POWK("powk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
+  DIVK("divk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
+  IDIVK("idivk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
+  BANDK("bandk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CKI),
+  BORK("bork", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CKI),
+  BXORK("bxork", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CKI),
+  SHRI("shri", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CsI),
+  SHLI("shli", OpV.LUA5455, OperandFormat.AR, OperandFormat.CsI, OperandFormat.BR),
+  ADD54("add", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  SUB54("sub", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  MUL54("mul", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  MOD54("mod", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  POW54("pow", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  DIV54("div", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  IDIV54("idiv", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  BAND54("band", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  BOR54("bor", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  BXOR54("bxor", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  SHL54("shl", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  SHR54("shr", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  MMBIN("mmbin", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.C),
+  MMBINI("mmbini", OpV.LUA5455, OperandFormat.AR, OperandFormat.BsI, OperandFormat.C, OperandFormat.k),
+  MMBINK("mmbink", OpV.LUA5455, OperandFormat.AR, OperandFormat.BK, OperandFormat.C, OperandFormat.k),
+  CONCAT54("concat", OpV.LUA5455, OperandFormat.AR, OperandFormat.B),
+  TBC("tbc", OpV.LUA5455, OperandFormat.AR),
+  JMP54("jmp", OpV.LUA5455, OperandFormat.sJ),
+  EQ54("eq", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.k),
+  LT54("lt", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.k),
+  LE54("le", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.k),
+  EQK("eqk", OpV.LUA5455, OperandFormat.AR, OperandFormat.BK, OperandFormat.k),
+  EQI("eqi", OpV.LUA5455, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
+  LTI("lti", OpV.LUA5455, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
+  LEI("lei", OpV.LUA5455, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
+  GTI("gti", OpV.LUA5455, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
+  GEI("gei", OpV.LUA5455, OperandFormat.AR, OperandFormat.BsI, OperandFormat.k, OperandFormat.C),
+  TEST54("test", OpV.LUA5455, OperandFormat.AR, OperandFormat.k),
+  TESTSET54("testset", OpV.LUA5455, OperandFormat.AR, OperandFormat.BR, OperandFormat.k),
+  TAILCALL54("tailcall", OpV.LUA5455, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
+  RETURN54("return", OpV.LUA5455, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
+  RETURN0("return0", OpV.LUA5455, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
+  RETURN1("return1", OpV.LUA5455, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
+  FORLOOP54("forloop", OpV.LUA5455, OperandFormat.AR, OperandFormat.BxJn),
   FORPREP54("forprep", OpV.LUA54, OperandFormat.AR, OperandFormat.BxJ),
-  TFORPREP54("tforprep", OpV.LUA54, OperandFormat.AR, OperandFormat.BxJ),
-  TFORCALL54("tforcall", OpV.LUA54, OperandFormat.AR, OperandFormat.C),
+  TFORPREP54("tforprep", OpV.LUA5455, OperandFormat.AR, OperandFormat.BxJ),
+  TFORCALL54("tforcall", OpV.LUA5455, OperandFormat.AR, OperandFormat.C),
   TFORLOOP54("tforloop", OpV.LUA54, OperandFormat.AR, OperandFormat.BxJn),
   SETLIST54("setlist", OpV.LUA54, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
-  VARARG54("vararg", OpV.LUA54, OperandFormat.AR, OperandFormat.C),
-  VARARGPREP("varargprep", OpV.LUA54, OperandFormat.A),
+  VARARG54("vararg", OpV.LUA5455, OperandFormat.AR, OperandFormat.C),
+  VARARGPREP("varargprep", OpV.LUA5455, OperandFormat.A),
+  // Lua 5.5 Opcodes
+  NEWTABLE55("newtable", OpV.LUA55, OperandFormat.AR, OperandFormat.B, OperandFormat.C, OperandFormat.k),
+  SELF55("self", OpV.LUA55, OperandFormat.AR, OperandFormat.BR, OperandFormat.CK),
+  FORPREP55("forprep", OpV.LUA55, OperandFormat.AR, OperandFormat.BxJ),
+  TFORPREP55("tforprep", OpV.LUA55, OperandFormat.AR, OperandFormat.BxJ),
+  SETLIST55("setlist", OpV.LUA55, OperandFormat.AR, OperandFormat.vB, OperandFormat.vC, OperandFormat.k),
+  CLOSE55("close", OpV.LUA55, OperandFormat.AR),
+  GETVARG("getvarg", OpV.LUA55, OperandFormat.AR, OperandFormat.BR, OperandFormat.CR),
+  ERRNNIL("errnnil", OpV.LUA55, OperandFormat.AR, OperandFormat.BxK),
   // Special
-  EXTRABYTE("extrabyte", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA54, OperandFormat.x),
+  EXTRABYTE("extrabyte", OpV.LUA50 | OpV.LUA51 | OpV.LUA52 | OpV.LUA53 | OpV.LUA5455, OperandFormat.x),
   DEFAULT("default", 0, OperandFormat.AR, OperandFormat.BRK, OperandFormat.CRK),
   DEFAULT54("default", 0, OperandFormat.AR, OperandFormat.BR, OperandFormat.C, OperandFormat.k);
   
@@ -199,7 +211,9 @@ public enum Op {
   public int jumpField(int codepoint, CodeExtract ex) {
     switch(this) {
       case FORPREP54:
+      case FORPREP55:
       case TFORPREP54:
+      case TFORPREP55:
         return ex.Bx.extract(codepoint);
       case FORLOOP54:
       case TFORLOOP54:
@@ -260,7 +274,7 @@ public enum Op {
       case GETTABUP: case GETTABUP54:
       case GETGLOBAL:
       case GETTABLE: case GETTABLE54: case GETI: case GETFIELD:
-      case NEWTABLE50: case NEWTABLE: case NEWTABLE54:
+      case NEWTABLE50: case NEWTABLE: case NEWTABLE54: case NEWTABLE55:
       case ADD: case SUB: case MUL: case DIV: case IDIV: case MOD: case POW: case BAND: case BOR: case BXOR: case SHL: case SHR:
       case ADD54: case SUB54: case MUL54: case DIV54: case IDIV54: case MOD54: case POW54: case BAND54: case BOR54: case BXOR54: case SHL54: case SHR54:
       case ADDK: case SUBK: case MULK: case DIVK: case IDIVK: case MODK: case POWK: case BANDK: case BORK: case BXORK:
@@ -269,6 +283,7 @@ public enum Op {
       case CONCAT: case CONCAT54:
       case CLOSURE:
       case TEST50: case TESTSET: case TESTSET54:
+      case GETVARG:
         return ex.A.extract(codepoint);
       case MMBIN: case MMBINI: case MMBINK:
         return -1; // depends on previous instruction
@@ -292,19 +307,20 @@ public enum Op {
       case TAILCALL: case TAILCALL54:
       case RETURN: case RETURN54: case RETURN0: case RETURN1:
       case FORLOOP: case FORLOOP54:
-      case FORPREP: case FORPREP54:
-      case TFORPREP: case TFORPREP54:
+      case FORPREP: case FORPREP54: case FORPREP55:
+      case TFORPREP: case TFORPREP54: case TFORPREP55:
       case TFORCALL: case TFORCALL54:
       case TFORLOOP: case TFORLOOP52: case TFORLOOP54:
       case TBC:
-      case CLOSE:
+      case CLOSE: case CLOSE55:
       case EXTRAARG:
-      case SELF: case SELF54:
+      case SELF: case SELF54: case SELF55:
       case EQ: case LT: case LE:
       case EQ54: case LT54: case LE54:
       case EQK: case EQI: case LTI: case LEI: case GTI: case GEI:
       case TEST: case TEST54:
-      case SETLIST50: case SETLISTO: case SETLIST: case SETLIST52: case SETLIST54:
+      case SETLIST50: case SETLISTO: case SETLIST: case SETLIST52: case SETLIST54: case SETLIST55:
+      case ERRNNIL:
       case VARARGPREP:
         return -1;
       case CALL: {

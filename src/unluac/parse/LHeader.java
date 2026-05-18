@@ -12,6 +12,7 @@ public class LHeader extends BObject {
   public final int format;
   public final LEndianness endianness;
   public final BIntegerType integer;
+  public final BIntegerType vinteger;
   public final BIntegerType sizeT;
   public final LBooleanType bool;
   public final LNumberType number;
@@ -25,10 +26,11 @@ public class LHeader extends BObject {
   public final LFunctionType function;
   public final CodeExtract extractor;
   
-  public LHeader(int format, LEndianness endianness, BIntegerType integer, BIntegerType sizeT, LBooleanType bool, LNumberType number, LNumberType linteger, LNumberType lfloat, LStringType string, LConstantType constant, LAbsLineInfoType abslineinfo, LLocalType local, LUpvalueType upvalue, LFunctionType function, CodeExtract extractor) {
+  public LHeader(int format, LEndianness endianness, BIntegerType integer, BIntegerType vinteger, BIntegerType sizeT, LBooleanType bool, LNumberType number, LNumberType linteger, LNumberType lfloat, LStringType string, LConstantType constant, LAbsLineInfoType abslineinfo, LLocalType local, LUpvalueType upvalue, LFunctionType function, CodeExtract extractor) {
     this.format = format;
     this.endianness = endianness;
     this.integer = integer;
+    this.vinteger = vinteger;
     this.sizeT = sizeT;
     this.bool = bool;
     this.number = number;

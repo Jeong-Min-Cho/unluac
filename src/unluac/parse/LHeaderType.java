@@ -18,6 +18,7 @@ abstract public class LHeaderType extends BObjectType<LHeader> {
   public static final LHeaderType TYPE52 = new LHeaderType52();
   public static final LHeaderType TYPE53 = new LHeaderType53();
   public static final LHeaderType TYPE54 = new LHeaderType54();
+  public static final LHeaderType TYPE55 = new LHeaderType55();
   
   public static LHeaderType get(Version.HeaderType type) {
     switch(type) {
@@ -26,6 +27,7 @@ abstract public class LHeaderType extends BObjectType<LHeader> {
       case LUA52: return TYPE52;
       case LUA53: return TYPE53;
       case LUA54: return TYPE54;
+      case LUA55: return TYPE55;
       default: throw new IllegalStateException();
     }
   }
@@ -38,8 +40,11 @@ abstract public class LHeaderType extends BObjectType<LHeader> {
   
   protected static final double TEST_FLOAT = 370.5;
   
+  protected static final int TEST_INSTRUCTION = 0x12345678;
+  
   protected static class LHeaderParseState {
     BIntegerType integer;
+    BIntegerType vinteger;
     BIntegerType sizeT;
     LNumberType number;
     LNumberType linteger;
@@ -65,6 +70,7 @@ abstract public class LHeaderType extends BObjectType<LHeader> {
     Version version = header.version;
     LHeaderParseState s = new LHeaderParseState();
     parse_main(buffer, header, s);
+    BIntegerType vinteger = s.vinteger != null ? s.vinteger : s.integer;
     LBooleanType bool = new LBooleanType();
     LStringType string = version.getLStringType();
     LConstantType constant = version.getLConstantType();
@@ -73,7 +79,12 @@ abstract public class LHeaderType extends BObjectType<LHeader> {
     LUpvalueType upvalue = version.getLUpvalueType();
     LFunctionType function = version.getLFunctionType();
     CodeExtract extract = new CodeExtract(header.version, s.sizeOp, s.sizeA, s.sizeB, s.sizeC);
-    return new LHeader(s.format, s.endianness, s.integer, s.sizeT, bool, s.number, s.linteger, s.lfloat, string, constant, abslineinfo, local, upvalue, function, extract);
+    return new LHeader(
+      s.format, s.endianness, s.integer, vinteger, s.sizeT,
+      bool, s.number, s.linteger, s.lfloat, string, constant,
+      abslineinfo, local, upvalue,
+      function, extract)
+    ;
   }
   
   abstract public List<Directive> get_directives();
@@ -218,26 +229,70 @@ abstract public class LHeaderType extends BObjectType<LHeader> {
     s.lFloatSize = lFloatSize;
   }
   
-  protected void parse_number_format_53(ByteBuffer buffer, BHeader header, LHeaderParseState s) {
-    byte[] endianness = new byte[s.lIntegerSize];
+  protected void test_int(ByteBuffer buffer, BHeader header, LHeaderParseState s, int size, int testSize, int test) {
+    byte[] endianness = new byte[size];
     buffer.get(endianness);
-    
-    byte test_high = (byte) ((TEST_INTEGER >> 8) & 0xFF);
-    byte test_low = (byte) (TEST_INTEGER & 0xFF);
-    
-    if(endianness[0] == test_low && endianness[1] == test_high) {
-      s.endianness = LHeader.LEndianness.LITTLE;
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    } else if(endianness[s.lIntegerSize - 1] == test_low && endianness[s.lIntegerSize - 2] == test_high) {
-      s.endianness = LHeader.LEndianness.BIG;
-      buffer.order(ByteOrder.BIG_ENDIAN);
-    } else {
-      throw new IllegalStateException("The input chunk reports an invalid endianness: " + Arrays.toString(endianness));
+    byte[] testle = new byte[size];
+    if(size < 2) throw new IllegalStateException();
+    for(int i = 0; i < testSize; i++) {
+      testle[i] = (byte) (0xFF & test);
+      test >>= 8;
     }
+    for(int i = testSize; i < size; i++) {
+      testle[i] = test >= 0 ? 0 : (byte)0xFF;
+    }
+    LHeader.LEndianness resultendian;
+    if(Arrays.equals(endianness, testle)) {
+      resultendian = LHeader.LEndianness.LITTLE;
+      buffer.order(ByteOrder.LITTLE_ENDIAN);
+    } else {
+      // swap byte order
+      for(int i = 0; i < size - i - 1; i++) {
+        byte b = testle[i];
+        testle[i] = testle[size - i - 1];
+        testle[size - i - 1] = b;
+      }
+      if(Arrays.equals(endianness, testle)) {
+        resultendian = LHeader.LEndianness.BIG;
+        buffer.order(ByteOrder.BIG_ENDIAN);
+      } else {
+        throw new IllegalStateException("The input chunk reports an invalid endianness: " + Arrays.toString(endianness));
+      }
+    }
+    if(s.endianness == null) {
+      s.endianness = resultendian;
+    } else if(s.endianness != resultendian) {
+      throw new IllegalStateException("Inconsistent endianness");
+    }
+    
+  }
+  
+  protected void parse_int_size_55(ByteBuffer buffer, BHeader header, LHeaderParseState s) {
+    int lIntSize = 0xFF & buffer.get();
+    test_int(buffer, header, s, lIntSize, 2, -TEST_INTEGER);
+    s.integer = new BIntegerTypeWrapper(s.sizeT, false, lIntSize);
+    s.vinteger = new BIntegerType50(true, lIntSize, true);
+  }
+  
+  protected void parse_number_format_53(ByteBuffer buffer, BHeader header, LHeaderParseState s) {
+    test_int(buffer, header, s, s.lIntegerSize, 2, TEST_INTEGER);
+    
     s.linteger = new LNumberType(s.lIntegerSize, true, LNumberType.NumberMode.MODE_INTEGER);
     s.lfloat = new LNumberType(s.lFloatSize, false, LNumberType.NumberMode.MODE_FLOAT);
     double floatcheck = s.lfloat.parse(buffer, header).value();
     if(floatcheck != s.lfloat.convert(TEST_FLOAT)) {
+      throw new IllegalStateException("The input chunk is using an unrecognized floating point format: " + floatcheck);
+    }
+  }
+  
+  protected void parse_number_format_55(ByteBuffer buffer, BHeader header, LHeaderParseState s) {
+    s.lIntegerSize = 0xFF & buffer.get();
+    test_int(buffer, header, s, s.lIntegerSize, 2, -TEST_INTEGER);
+    s.lFloatSize = 0xFF & buffer.get();
+    s.linteger = new LNumberTypeWrapper(new BIntegerTypeWrapper(s.sizeT, true, s.lIntegerSize), s.lIntegerSize);
+    s.lfloat = new LNumberType(s.lFloatSize, false, LNumberType.NumberMode.MODE_FLOAT);
+    double floatcheck = s.lfloat.parse(buffer, header).value();
+    if(floatcheck != s.lfloat.convert(-TEST_FLOAT)) {
       throw new IllegalStateException("The input chunk is using an unrecognized floating point format: " + floatcheck);
     }
   }
@@ -463,8 +518,8 @@ class LHeaderType54 extends LHeaderType {
     parse_integer_size(buffer, header, s);
     parse_float_size(buffer, header, s);
     parse_number_format_53(buffer, header, s);
-    s.integer = new BIntegerType54();
-    s.sizeT = new BIntegerType54();
+    s.integer = new BIntegerType54(true);
+    s.sizeT = s.integer;
   }
   
   @Override
@@ -487,6 +542,47 @@ class LHeaderType54 extends LHeaderType {
     out.write(header.lfloat.size);
     header.linteger.write(out, header, header.linteger.create(TEST_INTEGER));
     header.lfloat.write(out, header, header.lfloat.create(TEST_FLOAT));
+  }
+  
+}
+
+class LHeaderType55 extends LHeaderType {
+  
+  @Override
+  protected void parse_main(ByteBuffer buffer, BHeader header, LHeaderParseState s) {
+    s.sizeT = new BIntegerType54(false);
+    parse_format(buffer, header, s);
+    parse_tail(buffer, header, s);
+    parse_int_size_55(buffer, header, s);
+    parse_instruction_size(buffer, header, s);
+    test_int(buffer, header, s, 4, 4, TEST_INSTRUCTION);
+    parse_number_format_55(buffer, header, s);
+  }
+  
+  @Override
+  public List<Directive> get_directives() {
+    return Arrays.asList(new Directive[] {
+        Directive.FORMAT,
+        Directive.INT_SIZE,
+        Directive.INSTRUCTION_SIZE,
+        Directive.INTEGER_FORMAT,
+        Directive.FLOAT_FORMAT,
+        Directive.ENDIANNESS,
+     });
+  }
+  
+  @Override
+  public void write(OutputStream out, BHeader header, LHeader object) throws IOException {
+    write_format(out, header, object);
+    write_tail(out, header, object);
+    write_int_size(out, header, object);
+    header.vinteger.write(out, header, header.vinteger.create(-TEST_INTEGER));
+    write_instruction_size(out, header, object);
+    header.vinteger.write(out, header, new BIntegerType50(false, 4, false).create(TEST_INSTRUCTION));
+    out.write(header.linteger.size);
+    header.linteger.write(out, header, header.linteger.create(-TEST_INTEGER));
+    out.write(header.lfloat.size);
+    header.lfloat.write(out, header, header.lfloat.create(-TEST_FLOAT));
   }
   
 }

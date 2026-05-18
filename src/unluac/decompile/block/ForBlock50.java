@@ -7,7 +7,7 @@ import unluac.parse.LFunction;
 public class ForBlock50 extends ForBlock {
   
   public ForBlock50(LFunction function, int begin, int end, int register, CloseType closeType, int closeLine) {
-    super(function, begin, end, register, closeType, closeLine, false);
+    super(function, begin, end, register, 2, closeType, closeLine, false);
   }
   
   @Override

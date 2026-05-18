@@ -10,6 +10,8 @@ public class BInteger extends BObject {
   
   private static BigInteger MAX_INT = null;
   private static BigInteger MIN_INT = null;
+  private static BigInteger MAX_LONG = null;
+  private static BigInteger MIN_LONG = null;
   
   public BInteger(BInteger b) {
     this.big = b.big;
@@ -27,6 +29,8 @@ public class BInteger extends BObject {
     if(MAX_INT == null) {
       MAX_INT = BigInteger.valueOf(Integer.MAX_VALUE);
       MIN_INT = BigInteger.valueOf(Integer.MIN_VALUE);
+      MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
+      MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
     }
   }
 
@@ -37,6 +41,16 @@ public class BInteger extends BObject {
       throw new IllegalStateException("The size of an integer is outside the range that unluac can handle.");
     } else {
       return big.intValue();
+    }
+  }
+  
+  public long asLong() {
+    if(big == null) {
+      return n;
+    } else if(big.compareTo(MAX_LONG) > 0 || big.compareTo(MIN_LONG) < 0) {
+      throw new IllegalStateException("The size of an integer is outside the range that unluac can handle.");
+    } else {
+      return big.longValue();
     }
   }
   
@@ -105,6 +119,37 @@ public class BInteger extends BObject {
       array[i] = bytes.get(i);
     }
     return array;
+  }
+  
+  public boolean checkSize(int size) {
+    if(big != null) {
+      return big.bitCount() < size * 8;
+    } else if(size >= 4) {
+      return true;
+    } else {
+      return n < (1 << (size *8));
+    }
+  }
+  
+  
+  /* Lua 5.5 style sign conversion */
+  public BInteger convert() {
+    if(big != null) {
+      boolean sign = big.testBit(0);
+      if(sign) {
+        return new BInteger(big.shiftRight(1).negate());
+      } else {
+        return new BInteger(big.shiftRight(1));
+      }
+    } else {
+      int signbit = n & 1;
+      int mag = n >> 1;
+      if(signbit == 0) {
+        return new BInteger(mag);
+      } else {
+        return new BInteger(-mag);
+      }
+    }
   }
   
   public void iterate(Runnable thunk) {

@@ -10,6 +10,7 @@ import java.util.Set;
 
 import unluac.Configuration;
 import unluac.Version;
+import unluac.Version.VarArgType;
 import unluac.decompile.block.Block;
 import unluac.decompile.block.DoEndBlock;
 import unluac.decompile.block.OuterBlock;
@@ -66,7 +67,8 @@ public class Decompiler {
   
   public static enum Flag {
     SKIP,
-    LABELS;
+    LABELS,
+    GLOBAL;
     
     public final int bit;
     
@@ -95,12 +97,15 @@ public class Decompiler {
         int i;
         for(i = 0; i < Math.min(function.numParams, function.maximumStackSize); i++) {
           declList[i] = new Declaration("A" + i + "_" + function.level, 0, scopeEnd);
+          declList[i].register = i;
         }
         if(getVersion().varargtype.get() != Version.VarArgType.ELLIPSIS && (function.vararg & 1) != 0 && i < function.maximumStackSize) {
           declList[i++] = new Declaration("arg", 0, scopeEnd);
+          declList[i - 1].register = i - 1;
         }
         for(; i < function.maximumStackSize; i++) {
           declList[i] = new Declaration("L" + i + "_" + function.level, 0, scopeEnd);
+          declList[i].register = i;
         }
       }
     } else if(function.locals.length >= function.numParams) {
@@ -265,6 +270,7 @@ public class Decompiler {
       initdeclcount += vararg & 1;
       break;
     case ELLIPSIS:
+    case NAMED:
       break;
     }
     for(int i = initdeclcount; i < declList.length; i++) {
@@ -370,11 +376,8 @@ public class Decompiler {
         operations.add(new RegisterSet(line, A, f.getConstantExpression(Bx)));
         break;
       case LOADKX:
-        if(line + 1 <= code.length && code.op(line + 1) == Op.EXTRAARG) {
-          operations.add(new RegisterSet(line, A, f.getConstantExpression(code.Ax(line + 1))));
-        } else {
-          operations.add(new RegisterSet(line, A, f.getConstantExpression(Bx)));
-        }
+        if(line + 1 > code.length || code.op(line + 1) != Op.EXTRAARG) throw new IllegalStateException();
+        operations.add(new RegisterSet(line, A, f.getConstantExpression(code.Ax(line + 1))));
         break;
       case LOADBOOL:
         operations.add(new RegisterSet(line, A, ConstantExpression.createBoolean(B != 0)));
@@ -455,6 +458,16 @@ public class Decompiler {
         operations.add(new RegisterSet(line, A, new TableLiteral(arraySize, B == 0 ? 0 : (1 << (B - 1)))));
         break;
       }
+      case NEWTABLE55: {
+        if(code.op(line + 1) != Op.EXTRAARG) throw new IllegalStateException();
+        int arraySize = code.vC(line);
+        if(code.k(line)) {
+          arraySize += code.Ax(line + 1) * (code.getExtractor().vC.max() + 1);
+        }
+        int vB = code.vB(line);
+        operations.add(new RegisterSet(line, A, new TableLiteral(arraySize, vB == 0 ? 0 : (1 << (vB - 1)))));
+        break;
+      }
       case SELF: {
         // We can later determine if : syntax was used by comparing subexpressions with ==
         Expression common = r.getExpression(B, line);
@@ -467,6 +480,13 @@ public class Decompiler {
         Expression common = r.getExpression(B, line);
         operations.add(new RegisterSet(line, A + 1, common));
         operations.add(new RegisterSet(line, A, new TableReference(r, line, common, r.getKExpression54(C, code.k(line), line))));
+        break;
+      }
+      case SELF55: {
+     // We can later determine if : syntax was used by comparing subexpressions with ==
+        Expression common = r.getExpression(B, line);
+        operations.add(new RegisterSet(line, A + 1, common));
+        operations.add(new RegisterSet(line, A, new TableReference(r, line, common, f.getConstantExpression(C))));
         break;
       }
       case ADD:
@@ -676,7 +696,7 @@ public class Decompiler {
       case CALL: {
         boolean multiple = (C >= 3 || C == 0);
         if(B == 0) B = registers - A;
-        if(C == 0) C = registers - A;
+        if(C == 0) C = registers - A + 1;
         Expression function = r.getExpression(A, line);
         Expression[] arguments = new Expression[B - 1];
         for(int register = A + 1; register <= A + B - 1; register++) {
@@ -725,8 +745,8 @@ public class Decompiler {
         operations.add(new ReturnOperation(line, new Expression[] {r.getExpression(A, line)}));
         break;
       case FORLOOP: case FORLOOP54:
-      case FORPREP: case FORPREP54:
-      case TFORPREP: case TFORPREP54:
+      case FORPREP: case FORPREP54: case FORPREP55:
+      case TFORPREP: case TFORPREP54: case TFORPREP55:
       case TFORCALL: case TFORCALL54:
       case TFORLOOP: case TFORLOOP52: case TFORLOOP54:
         /* Do nothing ... handled with branches */
@@ -774,10 +794,29 @@ public class Decompiler {
         handleSetList(operations, state, line, A, B, C);
         break;
       }
+      case SETLIST55: {
+        int vB = code.vB(line);
+        int vC = code.vC(line);
+        if(code.k(line)) {
+          if(line + 1 > code.length || code.op(line + 1) != Op.EXTRAARG) throw new IllegalStateException();
+          vC += code.Ax(line + 1) * (code.getExtractor().vC.max() + 1);
+          flags[line + 1] |= Flag.SKIP.bit;
+        }
+        if(vB == 0) {
+          vB = registers - A - 1;
+        }
+        handleSetList(operations, state, line, A, vB, vC);
+        break;
+      }
+      case ERRNNIL:
+        if(line + 1 <= code.length) {
+          flags[line + 1] |= Flag.GLOBAL.bit;
+        }
+        break;
       case TBC:
         r.getDeclaration(A, line).tbc = true;
         break;
-      case CLOSE:
+      case CLOSE: case CLOSE55:
         break;
       case CLOSURE: {
         LFunction f = functions[Bx];
@@ -786,19 +825,24 @@ public class Decompiler {
         break;
       }
       case VARARGPREP:
-        /* Do nothing ... internal operation */
+        if(getVersion().varargtype.get() == VarArgType.NAMED && r.registers > function.numParams) {
+          Declaration decl = r.getDeclaration(function.numParams, line);
+          if(decl != null) {
+            decl.namedVararg = true;
+          }
+        }
         break;
       case VARARG: {
         boolean multiple = (B != 2);
-
+        
         // B == 1 means no registers are set; this should only happen when the VARARG
         // appears on the right-hand side of an assignment without enough targets.
         // Should be multiple (as not adjusted "(...)"), and we need to pretend it's
         // an actual operation so we can capture it...
         // (luac allocates stack space even though it doesn't technically use it)
         if(B == 1) B = 2;
-
-        if(B == 0) B = registers - A;
+        
+        if(B == 0) B = registers - A + 1;
         Expression value = new Vararg(B - 1, multiple);
         operations.add(new MultipleRegisterSet(line, A, A + B - 2, value));
         break;
@@ -806,9 +850,14 @@ public class Decompiler {
       case VARARG54: {
         boolean multiple = (C != 2);
         if(C == 1) C = 2; // see above
-        if(C == 0) C = registers - A;
+        if(C == 0) C = registers - A + 1;
         Expression value = new Vararg(C - 1, multiple);
         operations.add(new MultipleRegisterSet(line, A, A + C - 2, value));
+        break;
+      }
+      case GETVARG: {
+        Expression value = new TableReference(r, line, r.getExpression(B, line), r.getExpression(C, line));
+        operations.add(new RegisterSet(line, A, value));
         break;
       }
       case EXTRAARG:
@@ -840,6 +889,9 @@ public class Decompiler {
       Statement stmt = stmts.get(0);
       if(stmt instanceof Assignment) {
         assign = (Assignment) stmt;
+        if((flags[line] & Flag.GLOBAL.bit) != 0) {
+          assign.globalDeclare();
+        }
       }
       //System.out.println("-- added statemtent @" + line);
       if(assign != null) {
@@ -856,6 +908,9 @@ public class Decompiler {
           if(isMoveIntoTarget(r, nextLine)) {
             //System.out.println("-- found multiassign @" + nextLine);
             Target target = getMoveIntoTargetTarget(r, nextLine, line + 1);
+            //if((flags[nextLine] & Flag.GLOBAL.bit) != 0) {
+            //  assign.globalDeclare();
+            //}
             Expression value = getMoveIntoTargetValue(r, nextLine, line + 1); //updated?
             assign.addFirst(target, value, nextLine);
             flags[nextLine] |= Flag.SKIP.bit;
@@ -863,6 +918,9 @@ public class Decompiler {
           } else if(op == Op.MMBIN || op == Op.MMBINI || op == Op.MMBINK || code.isUpvalueDeclaration(nextLine)) {
             // skip
             nextLine++;
+          } else if(nextLine + 1 < block.end && code.op(nextLine + 1) == Op.ERRNNIL) {
+            // skip
+            nextLine += 2;
           } else {
             break;
           }
