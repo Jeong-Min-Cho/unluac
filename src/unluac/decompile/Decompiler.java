@@ -39,8 +39,10 @@ import unluac.decompile.target.Target;
 import unluac.decompile.target.UpvalueTarget;
 import unluac.decompile.target.VariableTarget;
 import unluac.parse.LFunction;
+import unluac.parse.LString;
 import unluac.parse.LUpvalue;
 import unluac.util.Stack;
+import unluac.util.StringUtils;
 
 public class Decompiler {
   
@@ -209,8 +211,34 @@ public class Decompiler {
   }
   
   public void print(State state, Output out) {
+    if(getConfiguration().annotate_source) {
+      printSourceComment(out);
+    }
     handleInitialDeclares(out);
     state.outer.print(this, out);
+  }
+
+  private void printSourceComment(Output out) {
+    // A missing source field inherits from the enclosing prototype. Its line
+    // range does not: it always describes the function being printed.
+    LFunction source = function;
+    while(source != null && (source.name == null || source.name == LString.NULL)) {
+      source = source.parent;
+    }
+    // Escape untrusted chunk names so embedded newlines cannot terminate the
+    // single-line comment and inject Lua code. Keep @/= source markers intact.
+    out.print("-- Original source: ");
+    out.print(source == null ? "unavailable" : StringUtils.toPrintString(source.name.deref()));
+    if(function.linedefined > 0) {
+      if(function.lastlinedefined >= function.linedefined) {
+        out.print("; definition lines " + function.linedefined + "-" + function.lastlinedefined);
+      } else {
+        out.print("; definition line " + function.linedefined + " (end unavailable)");
+      }
+    } else {
+      out.print("; definition lines unavailable");
+    }
+    out.println();
   }
   
   private void handleUnusedConstants(Block outer) {

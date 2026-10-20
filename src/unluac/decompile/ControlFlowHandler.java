@@ -1016,7 +1016,10 @@ public class ControlFlowHandler {
         }
         
         Block breakable = enclosing_breakable_block(state, line);
-        if(isbreakgotocandidate && breakable != null && (b.targetFirst == breakable.end || b.targetFirst == state.resolved[breakable.end])) {
+        // An enclosing loop may have redirected this jump to its latch, while
+        // the inner loop's exit still resolves to the enclosing loop's head.
+        // Compare resolved destinations on both sides to recognize the break.
+        if(isbreakgotocandidate && breakable != null && (b.targetFirst == breakable.end || state.resolved[b.targetFirst] == state.resolved[breakable.end])) {
           Break block = new Break(state.function, b.line, b.targetFirst);
           if(!hanging.isEmpty() && hanging.peek().targetSecond == b.targetFirst
             && enclosing_block(state, hanging.peek().line) == enclosing

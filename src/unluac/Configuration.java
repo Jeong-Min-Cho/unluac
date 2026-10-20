@@ -23,6 +23,7 @@ public class Configuration {
   }
   
   public boolean rawstring;
+  public boolean annotate_source;
   public Mode mode;
   public VariableMode variable;
   public boolean strict_scope;
@@ -33,6 +34,7 @@ public class Configuration {
   
   public Configuration() {
     rawstring = false;
+    annotate_source = false;
     mode = Mode.DECOMPILE;
     variable = VariableMode.DEFAULT;
     strict_scope = false;
@@ -43,6 +45,7 @@ public class Configuration {
   
   public Configuration(Configuration other) {
     rawstring = other.rawstring;
+    annotate_source = other.annotate_source;
     mode = other.mode;
     variable = other.variable;
     strict_scope = other.strict_scope;

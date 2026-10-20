@@ -2,6 +2,9 @@ package unluac.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import unluac.Configuration;
 import unluac.Main;
@@ -42,6 +45,9 @@ public class TestSuite {
     try {
       uspec.run(working_dir + compiled, working_dir + decompiled, config);
       if(!uspec.disassemble) {
+        if(config.annotate_source && !new String(Files.readAllBytes(Paths.get(working_dir + decompiled)), StandardCharsets.UTF_8).startsWith("-- Original source: ")) {
+          return TestResult.FAILED;
+        }
         LuaC.compile(spec, working_dir + decompiled, working_dir + recompiled);
       } else {
         Main.assemble(working_dir + decompiled, working_dir + recompiled);
@@ -155,6 +161,10 @@ public class TestSuite {
     if(testfile.getFlag(TestFile.RELAXED_SCOPE) && config.strict_scope) {
       modified = extend(config, modified);
       modified.strict_scope = false;
+    }
+    if(testfile.getFlag(TestFile.ANNOTATE_SOURCE)) {
+      modified = extend(config, modified);
+      modified.annotate_source = true;
     }
     return modified != null ? modified : config;
   }
