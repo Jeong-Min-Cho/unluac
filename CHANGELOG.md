@@ -30,6 +30,10 @@ First release of the fork.
 - Lua 5.0 while loops whose entry jump was threaded by the compiler.
 - Unmapped opcodes with `--opmap` crashed instead of reporting `unmapped opcode N`.
 
+### Known issues
+
+- `--assemble` fails on Lua 5.5 listings. Decompiling and `--disassemble` work.
+
 ### Changed
 
 - `--version` reports the fork's own version (1.3.0) instead of upstream's build number.
