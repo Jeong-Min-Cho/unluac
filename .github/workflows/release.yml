@@ -1,0 +1,83 @@
+name: Release
+
+# Push a tag such as v1.3.0 to publish a release. The tag must match
+# Main.version, and CHANGELOG.md must have a dated section for that version.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Check version and changelog
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          source_version="$(sed -n 's/.*String version = "\(.*\)";.*/\1/p' src/unluac/Main.java)"
+          if [ "$version" != "$source_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match Main.version ($source_version)."
+            exit 1
+          fi
+          heading="$(grep -m 1 "^## \[$version\]" CHANGELOG.md || true)"
+          if [ -z "$heading" ]; then
+            echo "::error::CHANGELOG.md has no section for $version."
+            exit 1
+          fi
+          if echo "$heading" | grep -qi unreleased; then
+            echo "::error::CHANGELOG.md still marks $version as Unreleased; set the release date."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build jar
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p build/classes dist
+          javac --release 8 -d build/classes -sourcepath src src/unluac/Main.java
+          jar cfm "dist/unluac-$VERSION.jar" MANIFEST.MF -C build/classes .
+          reported="$(java -jar "dist/unluac-$VERSION.jar" --version)"
+          if [ "$reported" != "$VERSION" ]; then
+            echo "::error::The jar reports version $reported, expected $VERSION."
+            exit 1
+          fi
+          (cd dist && sha256sum "unluac-$VERSION.jar" > SHA256SUMS)
+
+      - name: Extract release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v heading="## [$VERSION]" '
+            index($0, heading) == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found && /^\[[^]]*\]: / { next }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          cat notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "unluac $VERSION" \
+            --notes-file notes.md \
+            --verify-tag

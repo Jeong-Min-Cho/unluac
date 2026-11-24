@@ -18,9 +18,21 @@ print(greet("World"))
 
 ## Getting started
 
+### Prebuilt jar
+
+Download `unluac-<version>.jar` from the [Releases page](https://github.com/Jeong-Min-Cho/unluac/releases) and run it with Java 8 or newer:
+
+```bash
+java -jar unluac-1.3.0.jar input.luac -o output.lua
+```
+
+Each release also has a `SHA256SUMS` file for checking the download with `sha256sum -c SHA256SUMS`.
+
+### From source
+
 You need a JDK 8 or newer with `javac` and `java` on your `PATH`. A JRE alone can't compile the sources.
 
-There are no prebuilt releases. Clone the repository and run the wrapper script from its root:
+Clone the repository and run the wrapper script from its root:
 
 ```bash
 git clone https://github.com/Jeong-Min-Cho/unluac.git
@@ -32,11 +44,11 @@ On Windows, use `.\unluac.bat input.luac -o output.lua`.
 
 The scripts clean `build/classes`, compile from `src/`, and run the result. They stop if compilation fails, pass every argument and the exit code through, and print nothing of their own to stdout, so redirection works. You can call them by path from another directory; input and output paths stay relative to where you are. Two invocations share the build directory, so don't run them at the same time.
 
-To build a standalone jar instead:
+To build a standalone jar yourself:
 
 ```bash
 mkdir -p build/classes
-javac -d build/classes -sourcepath src src/unluac/Main.java
+javac --release 8 -d build/classes -sourcepath src src/unluac/Main.java
 jar cfm unluac.jar MANIFEST.MF -C build/classes .
 java -jar unluac.jar input.luac -o output.lua
 ```
@@ -44,6 +56,7 @@ java -jar unluac.jar input.luac -o output.lua
 ## Usage
 
 ```
+java -jar unluac.jar [options] <file>
 bash ./unluac.sh [options] <file>
 ```
 
@@ -119,7 +132,9 @@ An opcode map has one `.op` line per opcode, using the lowercase names that `--d
 
 ### xLua
 
-[xLua](https://github.com/Tencent/xLua), Tencent's Lua binding for Unity, produces Lua 5.3 bytecode with a modified header and with the integer and float tags swapped (3 and 19). It doesn't shuffle opcodes, so only a type map is needed. To decompile it:
+[xLua](https://github.com/Tencent/xLua), Tencent's Lua binding for Unity, embeds Lua 5.3. Stock xLua writes standard Lua 5.3 bytecode, which unluac reads as is.
+
+Some games patch xLua further, typically changing the signature and swapping the integer and float type tags (3 and 19). They don't shuffle opcodes, so a type map is enough. For that variant:
 
 1. Replace the first five bytes with the stock Lua 5.3 signature, `\x1bLua\x53`:
 
@@ -157,7 +172,9 @@ rm -rf build/classes && mkdir -p build/classes \
   && java -cp build/classes unluac.test.RunTests
 ```
 
-A version whose compiler is missing is skipped rather than failed, and a run where everything was skipped still exits 0, so read the summary. [AGENTS.md](AGENTS.md) has the Windows command and how to add a test.
+A version whose compiler is missing is skipped rather than failed, and a run where everything was skipped still exits 0, so read the summary.
+
+`unluac.test.RunFuzzTests` truncates and corrupts chunks from the same compilers and checks that each one gets a clean error rather than an uncaught exception. Run it the same way, with `RunFuzzTests.java` in place of `RunTests.java`. An optional argument sets the number of random mutations per chunk (default 300). [AGENTS.md](AGENTS.md) has the Windows command and how to add a test.
 
 ## What this fork changes
 
@@ -169,6 +186,8 @@ Compared with the upstream code the fork started from (1.2.3.530, October 2025):
 - Fixed nested loops and breaks that were dropped or misplaced when a `break` jumps through an enclosing loop's back edge, and Lua 5.5 `repeat` loops with captured locals.
 - Added `--annotate-source`.
 - Added `unluac.sh` and `unluac.bat`, a jar manifest, and `tools/build-luac.sh` for the test compilers.
+
+[CHANGELOG.md](CHANGELOG.md) lists the changes in each release.
 
 Bugs and feature requests go to the [issue tracker](https://github.com/Jeong-Min-Cho/unluac/issues). Attaching the `.luac` file, or the source and the `luac` version that produced it, makes a report much easier to act on.
 

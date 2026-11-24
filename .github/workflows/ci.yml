@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -47,7 +48,7 @@ jobs:
       - name: Run test suite
         run: |
           rm -rf build/classes && mkdir -p build/classes
-          javac -d build/classes -sourcepath src src/unluac/Main.java src/unluac/test/RunTests.java
+          javac --release 8 -d build/classes -sourcepath src src/unluac/Main.java src/unluac/test/RunTests.java
           set -o pipefail
           java -cp build/classes unluac.test.RunTests | tee suite.log
 
@@ -59,3 +60,11 @@ jobs:
             echo "::error::The test suite skipped tests; a reference compiler is missing."
             exit 1
           fi
+
+      # Corrupted chunks must produce a clean error, not an uncaught exception.
+      - name: Run fuzz tests
+        run: |
+          javac --release 8 -d build/classes -sourcepath src src/unluac/test/RunFuzzTests.java
+          set -o pipefail
+          java -Xmx512m -cp build/classes unluac.test.RunFuzzTests | tee fuzz.log
+          [ "$(tail -n 1 fuzz.log)" = "All tests passed!" ]
