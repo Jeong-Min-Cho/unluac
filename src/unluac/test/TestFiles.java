@@ -54,6 +54,7 @@ public class TestFiles {
     new TestFile("while10"),
     new TestFile("while11"),
     new TestFile("while12"),
+    new TestFile("while13"),
     new TestFile("repeat"),
     new TestFile("repeat02"),
     new TestFile("repeat03"),

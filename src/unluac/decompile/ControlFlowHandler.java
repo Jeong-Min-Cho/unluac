@@ -744,6 +744,19 @@ public class ControlFlowHandler {
               if(head.type == Branch.Type.jump && head.targetFirst == j.line) {
                 remove_branch(state, head);
                 repeat = false;
+                // luac threads jumps through the loop's entry jump, so a branch
+                // from before the loop that lands on the latch really targets
+                // the loop's start.
+                Branch k = state.begin_branch;
+                while(k != null && k.line < head.line) {
+                  if((k.type == Branch.Type.jump || is_conditional(k)) && k.targetSecond == j.line) {
+                    k.targetSecond = head.line;
+                    if(k.targetFirst == j.line) {
+                      k.targetFirst = head.line;
+                    }
+                  }
+                  k = k.next;
+                }
               }
             }
           }
