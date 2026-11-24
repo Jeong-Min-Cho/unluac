@@ -132,7 +132,9 @@ An opcode map has one `.op` line per opcode, using the lowercase names that `--d
 
 ### xLua
 
-[xLua](https://github.com/Tencent/xLua), Tencent's Lua binding for Unity, produces Lua 5.3 bytecode with a modified header and with the integer and float tags swapped (3 and 19). It doesn't shuffle opcodes, so only a type map is needed. To decompile it:
+[xLua](https://github.com/Tencent/xLua), Tencent's Lua binding for Unity, embeds Lua 5.3. Stock xLua writes standard Lua 5.3 bytecode, which unluac reads as is.
+
+Some games patch xLua further, typically changing the signature and swapping the integer and float type tags (3 and 19). They don't shuffle opcodes, so a type map is enough. For that variant:
 
 1. Replace the first five bytes with the stock Lua 5.3 signature, `\x1bLua\x53`:
 
