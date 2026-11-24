@@ -733,7 +733,11 @@ public class ControlFlowHandler {
               if((k.type == Branch.Type.jump
                   || (k.type == Branch.Type.test || k.type == Branch.Type.comparison)
                   && state.function.header.version.useifgotorewrite.get() != Maybe.NO)
-                && (k.targetFirst < loopback || k.targetSecond > end)
+                // A target that resolves to where this loop's own exit leads
+                // is a break (possibly redirected through an enclosing loop's
+                // back edge), not a goto.
+                && (k.targetFirst < loopback && state.resolved[k.targetFirst] != state.resolved[end]
+                  || k.targetSecond > end && state.resolved[k.targetSecond] != state.resolved[end])
               ) {
                 // Decompilation as loop may require a goto anyway to exit
                 gotoheuristic = true;
