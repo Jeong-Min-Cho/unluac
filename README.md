@@ -95,7 +95,7 @@ Code that uses `goto` heavily (5.2 and later) is the most likely to come out wro
 
 Some games ship a patched Lua VM. If the patch only renumbers constant type tags or opcodes, a map file passed with `--typemap` or `--opmap` is enough.
 
-A map replaces the built-in table instead of patching it, so it has to list every tag or opcode the chunk uses. A missing type fails with `unmapped type code N`; a missing opcode crashes the decompiler.
+A map replaces the built-in table instead of patching it, so it has to list every tag or opcode the chunk uses. Decompiling fails with `unmapped type code N` or `unmapped opcode N` if one is missing. An incomplete opcode map still works with `--disassemble`, which prints unmapped opcodes as `opNN`; that helps when working out a shuffled map.
 
 A type map has one `.type` line per tag. The names are `nil`, `boolean`, `false`, `true`, `number`, `float`, `integer`, `string`, `short_string` and `long_string`; which ones apply depends on the Lua version. Stock Lua 5.3 would be:
 
