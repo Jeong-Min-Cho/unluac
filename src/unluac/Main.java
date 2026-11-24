@@ -37,6 +37,8 @@ public class Main {
           config.rawstring = true;
         } else if(arg.equals("--luaj")) {
           config.luaj = true;
+        } else if(arg.equals("--annotate-source")) {
+          config.annotate_source = true;
         } else if(arg.equals("--nodebug")) {
           config.variable = Configuration.VariableMode.NODEBUG;
         } else if(arg.equals("--disassemble")) {
@@ -157,6 +159,7 @@ public class Main {
     System.out.println("Available options are:");
     System.out.println("  --assemble        assemble given disassembly listing");
     System.out.println("  --disassemble     disassemble instead of decompile");
+    System.out.println("  --annotate-source add source/definition-line comments to decompiled functions");
     System.out.println("  --nodebug         ignore debugging information in input file");
     System.out.println("  --typemap <file>  use type mapping specified in <file>");
     System.out.println("  --opmap <file>    use opcode mapping specified in <file>");

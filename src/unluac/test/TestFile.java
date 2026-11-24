@@ -5,6 +5,7 @@ public class TestFile {
   public static final int DEFAULT_VERSION = 0x50;
   
   public static final int RELAXED_SCOPE = 1;
+  public static final int ANNOTATE_SOURCE = 2;
   
   public final String name;
   public final int version;
