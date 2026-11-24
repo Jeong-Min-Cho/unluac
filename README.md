@@ -170,6 +170,8 @@ Compared with the upstream code the fork started from (1.2.3.530, October 2025):
 - Added `--annotate-source`.
 - Added `unluac.sh` and `unluac.bat`, a jar manifest, and `tools/build-luac.sh` for the test compilers.
 
+[CHANGELOG.md](CHANGELOG.md) lists the changes in each release.
+
 Bugs and feature requests go to the [issue tracker](https://github.com/Jeong-Min-Cho/unluac/issues). Attaching the `.luac` file, or the source and the `luac` version that produced it, makes a report much easier to act on.
 
 ## Credits and license
