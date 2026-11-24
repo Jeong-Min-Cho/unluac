@@ -11,6 +11,7 @@ First release of the fork.
 - Lua 5.5 support: the 5.5 header, string and upvalue formats, named varargs and the 5.5 opcode set.
 - `--annotate-source`, which adds a comment with each function's original source name and line range.
 - xLua documentation: decompiling its Lua 5.3 bytecode with a header fix and `--typemap`.
+- Prebuilt `unluac-<version>.jar` and `SHA256SUMS` on GitHub Releases, published by a release workflow when a `v*` tag is pushed.
 - `unluac.sh` and `unluac.bat` wrapper scripts, and a jar manifest so `java -jar unluac.jar` works.
 - `tools/build-luac.sh`, which builds the reference `luac` compilers the test suite needs.
 - GitHub Actions CI that runs the full suite against every supported Lua version.

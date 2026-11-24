@@ -18,9 +18,21 @@ print(greet("World"))
 
 ## Getting started
 
+### Prebuilt jar
+
+Download `unluac-<version>.jar` from the [Releases page](https://github.com/Jeong-Min-Cho/unluac/releases) and run it with Java 8 or newer:
+
+```bash
+java -jar unluac-1.3.0.jar input.luac -o output.lua
+```
+
+Each release also has a `SHA256SUMS` file for checking the download with `sha256sum -c SHA256SUMS`.
+
+### From source
+
 You need a JDK 8 or newer with `javac` and `java` on your `PATH`. A JRE alone can't compile the sources.
 
-There are no prebuilt releases. Clone the repository and run the wrapper script from its root:
+Clone the repository and run the wrapper script from its root:
 
 ```bash
 git clone https://github.com/Jeong-Min-Cho/unluac.git
@@ -32,11 +44,11 @@ On Windows, use `.\unluac.bat input.luac -o output.lua`.
 
 The scripts clean `build/classes`, compile from `src/`, and run the result. They stop if compilation fails, pass every argument and the exit code through, and print nothing of their own to stdout, so redirection works. You can call them by path from another directory; input and output paths stay relative to where you are. Two invocations share the build directory, so don't run them at the same time.
 
-To build a standalone jar instead:
+To build a standalone jar yourself:
 
 ```bash
 mkdir -p build/classes
-javac -d build/classes -sourcepath src src/unluac/Main.java
+javac --release 8 -d build/classes -sourcepath src src/unluac/Main.java
 jar cfm unluac.jar MANIFEST.MF -C build/classes .
 java -jar unluac.jar input.luac -o output.lua
 ```
@@ -44,6 +56,7 @@ java -jar unluac.jar input.luac -o output.lua
 ## Usage
 
 ```
+java -jar unluac.jar [options] <file>
 bash ./unluac.sh [options] <file>
 ```
 
