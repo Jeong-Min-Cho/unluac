@@ -59,3 +59,11 @@ jobs:
             echo "::error::The test suite skipped tests; a reference compiler is missing."
             exit 1
           fi
+
+      # Corrupted chunks must produce a clean error, not an uncaught exception.
+      - name: Run fuzz tests
+        run: |
+          javac -d build/classes -sourcepath src src/unluac/test/RunFuzzTests.java
+          set -o pipefail
+          java -Xmx512m -cp build/classes unluac.test.RunFuzzTests | tee fuzz.log
+          [ "$(tail -n 1 fuzz.log)" = "All tests passed!" ]

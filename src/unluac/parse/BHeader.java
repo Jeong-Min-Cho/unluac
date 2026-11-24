@@ -81,9 +81,16 @@ public class BHeader {
   public BHeader(ByteBuffer buffer, Configuration config) {
     this.config = config;
     // 4 byte Lua signature
+    if(buffer.remaining() == 0) {
+      throw new MalformedChunkException("the input file is empty");
+    }
     for(int i = 0; i < signature.length; i++) {
-      if(buffer.get() != signature[i]) {
-        throw new IllegalStateException("The input file does not have the signature of a valid Lua file.");
+      if(!buffer.hasRemaining() || buffer.get() != signature[i]) {
+        String message = "not a Lua bytecode file (it doesn't start with the \\x1bLua signature)";
+        if(looksLikeText(buffer)) {
+          message += "; it looks like text, so it may be Lua source rather than output from luac";
+        }
+        throw new MalformedChunkException(message);
       }
     }
     
@@ -93,7 +100,7 @@ public class BHeader {
     
     version = Version.getVersion(config, major, minor);
     if(version == null) {
-      throw new IllegalStateException("The input chunk's Lua version is " + major + "." + minor + "; unluac can only handle Lua 5.0 - Lua 5.4.");
+      throw new MalformedChunkException("the chunk's Lua version is " + major + "." + minor + "; unluac supports Lua 5.0 through 5.5");
     }
     
     lheader_type = version.getLHeaderType();
@@ -204,6 +211,17 @@ public class BHeader {
       out.write(main.numUpvalues);
     }
     function.write(out, this, main);
+  }
+  
+  private static boolean looksLikeText(ByteBuffer buffer) {
+    int limit = Math.min(buffer.limit(), 256);
+    if(limit == 0) return false;
+    for(int i = 0; i < limit; i++) {
+      int b = 0xFF & buffer.get(i);
+      boolean text = (b >= 0x20 && b != 0x7F) || b == '\t' || b == '\n' || b == '\r';
+      if(!text) return false;
+    }
+    return true;
   }
   
 }

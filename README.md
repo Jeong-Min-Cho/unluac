@@ -157,7 +157,9 @@ rm -rf build/classes && mkdir -p build/classes \
   && java -cp build/classes unluac.test.RunTests
 ```
 
-A version whose compiler is missing is skipped rather than failed, and a run where everything was skipped still exits 0, so read the summary. [AGENTS.md](AGENTS.md) has the Windows command and how to add a test.
+A version whose compiler is missing is skipped rather than failed, and a run where everything was skipped still exits 0, so read the summary.
+
+`unluac.test.RunFuzzTests` truncates and corrupts chunks from the same compilers and checks that each one gets a clean error rather than an uncaught exception. Run it the same way, with `RunFuzzTests.java` in place of `RunTests.java`. An optional argument sets the number of random mutations per chunk (default 300). [AGENTS.md](AGENTS.md) has the Windows command and how to add a test.
 
 ## What this fork changes
 

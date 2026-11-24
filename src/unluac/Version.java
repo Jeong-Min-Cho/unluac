@@ -14,7 +14,12 @@ import unluac.parse.LUpvalueType;
 
 public class Version {
 
+  public static boolean isSupported(int major, int minor) {
+    return major == 5 && minor >= 0 && minor <= 5;
+  }
+  
   public static Version getVersion(Configuration config, int major, int minor) {
+    if(!isSupported(major, minor)) return null;
     return new Version(config, major, minor);
   }
   

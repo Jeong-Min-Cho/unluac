@@ -93,6 +93,9 @@ abstract public class LFunctionType extends BObjectType<LFunction> {
     }
     s.length = header.integer.parse(buffer, header).asInt();
     if(align) align(buffer, 4);
+    if(s.length < 0 || s.length > buffer.remaining() / 4) {
+      throw new MalformedChunkException("the chunk declares " + s.length + " instructions, but only " + buffer.remaining() + " bytes remain");
+    }
     s.code = new int[s.length];
     for(int i = 0; i < s.length; i++) {
       s.code[i] = buffer.getInt();

@@ -25,4 +25,5 @@
   ```
 
   Prints one line per Lua version (`.` = pass, `,` = skipped, `!` = failed) followed by a list of failures and skips; exits non-zero if anything failed. Shares `build/classes` with `unluac.sh`/`unluac.bat`, so don't run them concurrently.
+- Fuzz tests: same command with `RunFuzzTests` in place of `RunTests` (optional argument: mutations per chunk, default 300). They check that truncated or corrupted chunks fail with `MalformedChunkException`; a parser change that lets another exception escape shows up here.
 - New tests: add `test/src/<name>.lua` and register it in `src/unluac/test/TestFiles.java`. A hex prefix (e.g. `55_`) restricts the test to that Lua version and later. Keep harness paths forward-slashed (`./test/src/`): Java and `luac` accept `/` on Windows, while `\` is an ordinary filename character on Linux.

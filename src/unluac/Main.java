@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -15,16 +16,20 @@ import unluac.Configuration.Mode;
 import unluac.assemble.Assembler;
 import unluac.assemble.AssemblerException;
 import unluac.decompile.Decompiler;
+import unluac.decompile.DecompilerException;
 import unluac.decompile.Disassembler;
 import unluac.decompile.FileOutputProvider;
 import unluac.decompile.Output;
 import unluac.parse.BHeader;
 import unluac.parse.LFunction;
+import unluac.parse.MalformedChunkException;
 import unluac.util.FileUtils;
 
 public class Main {
 
   public static final String version = "1.3.0";
+  
+  private static final String issues = "https://github.com/Jeong-Min-Cho/unluac/issues";
   
   public static void main(String[] args) {
     String fn = null;
@@ -45,7 +50,7 @@ public class Main {
           config.mode = Mode.DISASSEMBLE;
         } else if(arg.equals("--assemble")) {
           config.mode = Mode.ASSEMBLE;
-        } else if(arg.equals("--help")) {
+        } else if(arg.equals("--help") || arg.equals("-h")) {
           config.mode = Mode.HELP;
         } else if(arg.equals("--version")) {
           config.mode = Mode.VERSION;
@@ -90,30 +95,30 @@ public class Main {
         System.out.println(version);
         break;
       case DECOMPILE: {
-        LFunction lmain = null;
+        LFunction lmain = load(fn, config);
         try {
-          lmain = file_to_function(fn, config);
-        } catch(IOException e) {
-          error(e.getMessage(), false);
+          Decompiler d = new Decompiler(lmain);
+          Decompiler.State result = d.decompile();
+          Output output = config.getOutput();
+          d.print(result, output);
+          output.finish();
+        } catch(DecompilerException e) {
+          error("invalid bytecode in " + e.getMessage(), false);
+        } catch(RuntimeException e) {
+          internal_error("decompiling", e);
         }
-        Decompiler d = new Decompiler(lmain);
-        Decompiler.State result = d.decompile();
-        Output output = config.getOutput();
-        d.print(result, output);
-        output.finish();
         break;
       }
       case DISASSEMBLE: {
-        LFunction lmain = null;
+        LFunction lmain = load(fn, config);
         try {
-          lmain = file_to_function(fn, config);
-        } catch(IOException e) {
-          error(e.getMessage(), false);
+          Disassembler d = new Disassembler(lmain);
+          Output output = config.getOutput();
+          d.disassemble(output);
+          output.finish();
+        } catch(RuntimeException e) {
+          internal_error("disassembling", e);
         }
-        Disassembler d = new Disassembler(lmain);
-        Output output = config.getOutput();
-        d.disassemble(output);
-        output.finish();
         break;
       }
       case ASSEMBLE: {
@@ -153,6 +158,27 @@ public class Main {
     System.exit(1);
   }
   
+  private static void internal_error(String task, RuntimeException e) {
+    print_unluac_string(System.err);
+    System.err.println("  error: unluac failed while " + task + " this file: " + e);
+    System.err.println("  This is a bug in unluac. --disassemble may still work on this file.");
+    System.err.println("  Please report it at " + issues + " and attach the input file.");
+    System.err.println();
+    e.printStackTrace();
+    System.exit(1);
+  }
+  
+  private static LFunction load(String fn, Configuration config) {
+    try {
+      return file_to_function(fn, config);
+    } catch(IOException e) {
+      error(e.getMessage(), false);
+    } catch(MalformedChunkException e) {
+      error(fn + ": " + e.getMessage(), false);
+    }
+    throw new IllegalStateException();
+  }
+  
   public static void help() {
     print_unluac_string(System.out);
     print_usage(System.out);
@@ -163,9 +189,11 @@ public class Main {
     System.out.println("  --nodebug         ignore debugging information in input file");
     System.out.println("  --typemap <file>  use type mapping specified in <file>");
     System.out.println("  --opmap <file>    use opcode mapping specified in <file>");
-    System.out.println("  --output <file>   output to <file> instead of stdout");
+    System.out.println("  -o, --output <file> output to <file> instead of stdout");
     System.out.println("  --rawstring       copy string bytes directly to output");
     System.out.println("  --luaj            emulate Luaj's permissive parser");
+    System.out.println("  -h, --help        show this help");
+    System.out.println("  --version         print the version");
   }
   
   private static void print_unluac_string(PrintStream out) {
@@ -181,17 +209,34 @@ public class Main {
     try {
       file = new RandomAccessFile(fn, "r");
       ByteBuffer buffer = ByteBuffer.allocate((int) file.length());
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
       int len = (int) file.length();
       FileChannel in = file.getChannel();
       while(len > 0) len -= in.read(buffer);
       buffer.rewind();
-      BHeader header = new BHeader(buffer, config);
-      return header.main;
+      return parse(buffer, config);
     } finally {
       if(file != null) {
         file.close();
       }
+    }
+  }
+  
+  /**
+   * Parses a chunk held in memory. Any failure caused by the input is
+   * reported as a {@link MalformedChunkException}.
+   */
+  public static LFunction parse(ByteBuffer buffer, Configuration config) {
+    buffer.order(ByteOrder.LITTLE_ENDIAN);
+    try {
+      BHeader header = new BHeader(buffer, config);
+      return header.main;
+    } catch(MalformedChunkException e) {
+      throw e;
+    } catch(BufferUnderflowException e) {
+      throw new MalformedChunkException("unexpected end of file at byte " + buffer.position() + " of " + buffer.limit() + "; the chunk is truncated or corrupt");
+    } catch(RuntimeException e) {
+      String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+      throw new MalformedChunkException("couldn't parse the chunk near byte " + buffer.position() + ": " + detail);
     }
   }
   
