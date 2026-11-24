@@ -2,24 +2,40 @@
 
 > **Fork Notice**: This is a fork of the original unluac project from [SourceForge](https://sourceforge.net/p/unluac/hgcode/ci/default/tree/) with bug fixes and improvements.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](license.txt)
 
 ## Overview
 
-**unluac** is a decompiler for Lua bytecode versions 5.0 through 5.4. It converts compiled Lua chunks back into readable Lua source code, making it useful for analyzing, debugging, and understanding Lua bytecode.
+**unluac** is a decompiler for Lua bytecode versions 5.0 through 5.5. It converts compiled Lua chunks back into readable Lua source code, making it useful for analyzing, debugging, and understanding Lua bytecode.
 
 ### Key Features
 
-- ✅ **Multi-version Support**: Lua 5.0, 5.1, 5.2, 5.3, and 5.4
+- ✅ **Multi-version Support**: Lua 5.0, 5.1, 5.2, 5.3, 5.4, and 5.5
 - ✅ **Command-line Interface**: Simple and straightforward usage
 - ✅ **Java-based**: Cross-platform compatibility
 - ✅ **Debug Info Required**: Works with standard Lua compiler output (non-stripped chunks)
 
 ## Installation
 
-### Build from Source
+**Requirements**: JDK 8 or higher, with `javac` and `java` on your `PATH` (a JRE alone is not enough). Building a standalone jar also needs `jar`.
 
-**Requirements**: JDK 8 or higher, with `javac` and `java` on your `PATH` (a JRE alone is not enough).
+Clone the repository:
+
+```bash
+git clone https://github.com/Jeong-Min-Cho/unluac.git
+cd unluac
+```
+
+### Build a standalone jar
+
+```bash
+mkdir -p build/classes
+javac -d build/classes -sourcepath src src/unluac/Main.java
+jar cfm unluac.jar MANIFEST.MF -C build/classes .
+java -jar unluac.jar input.luac -o output.lua
+```
+
+### Build and run from source
 
 Use one command to compile the current sources and run the tool. From the repository root:
 
@@ -61,10 +77,19 @@ bash ./unluac.sh input.luac > output.lua
 bash ./unluac.sh myfile.luac > myfile_decompiled.lua
 ```
 
-**Decompile with custom opcode mapping** (for custom Lua implementations like xlua):
+**Decompile with custom opcode mapping** (for modified Lua VMs with shuffled opcodes):
 
 ```bash
 bash ./unluac.sh --opmap opcode_map.txt myfile.luac > output.lua
+```
+
+An opcode map is a plain text file, one `.op <number> <name>` per line:
+
+```
+.op 0 getglobal
+.op 1 settable
+.op 2 getupval
+# ... etc
 ```
 
 **Disassemble instead of decompile:**
@@ -75,10 +100,16 @@ bash ./unluac.sh --disassemble myfile.luac
 
 ### Command-line Options
 
-- `--typemap <file>` - Use custom type mapping file (for modified Lua VMs with swapped constant types)
-- `--opmap <file>` - Use custom opcode mapping file (for modified Lua VMs with shuffled opcodes)
+- `--assemble` - Assemble a disassembly listing (requires `--output`)
 - `--disassemble` - Output disassembly instead of decompiled code
 - `--annotate-source` - Add original source labels and function-definition line ranges as comments
+- `--nodebug` - Ignore debugging information in the input file
+- `--typemap <file>` - Use custom type mapping file (for modified Lua VMs with swapped constant types)
+- `--opmap <file>` - Use custom opcode mapping file (for modified Lua VMs with shuffled opcodes)
+- `--output <file>` / `-o <file>` - Write to `<file>` instead of standard output
+- `--rawstring` - Copy string bytes directly to the output
+- `--luaj` - Emulate Luaj's permissive parser
+- `--help` - Show all options
 - `--version` - Show version information
 
 ### Optional source annotations
@@ -117,11 +148,13 @@ The flag does not change disassembly/assembly output and is off by default.
 `--nodebug` still disables debug-based variable reconstruction; it does not
 suppress explicitly requested source annotations.
 
+> **Note**: This tool is intended for legitimate purposes such as debugging, learning, and analyzing Lua code. Please respect intellectual property rights and use responsibly.
+
 ## Requirements
 
 - **Java**: JDK 8 or higher
 - **Input**: Lua bytecode compiled with debug information (default for `luac`)
-- **Supported Lua Versions**: 5.0, 5.1, 5.2, 5.3, 5.4
+- **Supported Lua Versions**: 5.0, 5.1, 5.2, 5.3, 5.4, 5.5
 
 > **Note**: The Lua compiler includes debugging information by default. If chunks are compiled with the `-s` flag (strip debug info), decompilation will not work properly.
 
@@ -136,21 +169,21 @@ suppress explicitly requested source annotations.
 | Lua 5.2     | ✅ Good                        |
 | Lua 5.3     | ✅ Good                        |
 | Lua 5.4     | ✅ Good (some goto edge cases) |
+| Lua 5.5     | ✅ Good                        |
 
 ### Supported Variants
 
 #### xLua (Tencent, used in Unity games)
 
-xLua is Tencent's Lua 5.3 bridge for Unity, used widely in Chinese mobile games. It compiles Lua 5.3 bytecode with three non-standard modifications:
+xLua is Tencent's Lua 5.3 bridge for Unity, used widely in Chinese mobile games. It writes a modified header and swaps the integer/float constant type tags compared with standard Lua 5.3:
 
 | Modification | Standard Lua 5.3 | xLua |
 | --- | --- | --- |
-| Upvalue entry size | 2 bytes | 3 bytes |
 | Integer constant type tag | 3 | 19 |
 | Float constant type tag | 19 | 3 |
 | Header (bytes 0–4) | `\x1bLua\x53` | Modified |
 
-**unluac handles all of these natively** — no patched build required.
+The steps below normalize the header and the constant tags; no patched build is required for those two differences. This workflow has not been verified against a real xLua chunk. Upvalue entries are read with the standard Lua 5.3 2-byte format — there is no xLua-specific upvalue parsing, so chunks with a different upvalue layout are not supported.
 
 **Step 1 — Fix the header**
 
@@ -176,10 +209,6 @@ def fix_xlua_header(data: bytes) -> bytes:
 bash ./unluac.sh --typemap xlua.typemap fixed.luac -o output.lua
 ```
 
-The 3-byte upvalue format is handled automatically; no extra flags needed.
-
-See [Example 2](#example-2-xlua-bytecode-unity-games) for a complete end-to-end workflow.
-
 ### Known Limitations
 
 - **Stripped Bytecode**: Cannot decompile chunks compiled with `-s` flag
@@ -188,21 +217,11 @@ See [Example 2](#example-2-xlua-bytecode-unity-games) for a complete end-to-end 
 
 ## Changes in This Fork
 
-This fork includes critical bug fixes not present in the original version:
-
-### Fixed: ArrayIndexOutOfBoundsException (Critical)
-
-**Problem**: Original unluac crashed when decompiling valid Lua bytecode containing CALL or VARARG instructions with variable return values at register boundaries.
-
-**Solution**:
-
-- Fixed off-by-one error in register count calculation in `Decompiler.java`
-- Added defensive bounds checking in `Registers.java`
-
-**Impact**:
-
-- Fixes crashes on valid Lua bytecode
-- Improves compatibility with custom Lua implementations
+- **Lua 5.5 support** ([#6](https://github.com/Jeong-Min-Cho/unluac/pull/6)): Lua 5.5 bytecode can be decompiled.
+- **ArrayIndexOutOfBoundsException fix** ([#2](https://github.com/Jeong-Min-Cho/unluac/pull/2)): corrected the off-by-one register count for CALL/VARARG instructions with variable return values in `Decompiler.java` and added bounds checking in `Registers.java`.
+- **IllegalStateException crash fix** ([#3](https://github.com/Jeong-Min-Cho/unluac/pull/3)).
+- **Loop and break fixes** ([#11](https://github.com/Jeong-Min-Cho/unluac/issues/11)): nested breaks redirected through enclosing loops, Lua 5.5 repeat loops with captured locals, and Lua 5.5 integer constants.
+- **`--annotate-source`** ([#10](https://github.com/Jeong-Min-Cho/unluac/pull/10)): optional original-source and definition-line comments; see [Optional source annotations](#optional-source-annotations).
 
 ## Credits
 
@@ -218,7 +237,7 @@ See [authors.txt](authors.txt) for complete attribution.
 
 Bug fixes and improvements by contributors to this repository.
 
-### Running Tests
+## Running Tests
 
 The regression suite (`unluac.test.RunTests`) compiles each `test/src/*.lua` with reference
 `luac` binaries, decompiles, recompiles, and compares bytecode. It expects `luac50`, `luac51`,
@@ -236,98 +255,12 @@ Portions Copyright (c) 2014 Thomas Klaeger
 ## Resources
 
 - **Original Project**: [SourceForge - unluac](https://sourceforge.net/p/unluac/hgcode/ci/default/tree/)
+- **Issue Tracker**: [GitHub Issues](https://github.com/Jeong-Min-Cho/unluac/issues) — report bugs and request features here
 - **Lua Official Site**: [lua.org](https://www.lua.org/)
 - **Lua Reference Manual**: [Lua 5.4 Reference](https://www.lua.org/manual/5.4/)
 
 ## Troubleshooting
 
-### "Exception in thread..." errors
-
-If you encounter `ArrayIndexOutOfBoundsException`, `NullPointerException`, or similar errors:
-
-1. **Use this fork** - The original version has known bugs that are fixed here
-2. **Check debug info** - Ensure your `.luac` file was compiled with debug information
-3. **Verify Lua version** - Make sure the bytecode version is supported (5.0-5.4)
-4. **Custom VM?** - If using a modified Lua VM, you may need an opcode mapping file
-
-### Decompiled code doesn't run
-
-This can happen due to:
-
-- **Control flow complexity** - Very complex goto statements in Lua 5.2+
-- **Bytecode optimization** - Some compiler optimizations may not decompile perfectly
-- **Custom implementations** - Non-standard Lua VMs may have quirks
-
-## Examples
-
-### Example 1: Basic Decompilation
-
-```lua
--- original.lua
-local function greet(name)
-    return "Hello, " .. name .. "!"
-end
-print(greet("World"))
-```
-
-```bash
-# Compile
-luac -o original.luac original.lua
-
-# Decompile
-bash ./unluac.sh original.luac > decompiled.lua
-```
-
-### Example 2: xLua Bytecode (Unity Games)
-
-xLua (used in many Unity mobile games) compiles Lua 5.3 with a modified header and swapped constant type tags. See [Supported Variants → xLua](#xlua-tencent-used-in-unity-games) for the full explanation.
-
-**1. Fix the header (Python):**
-
-```python
-STANDARD_LUA53_HEADER = b'\x1bLua\x53'
-
-with open("input.luac", "rb") as f:
-    data = f.read()
-
-with open("fixed.luac", "wb") as f:
-    f.write(STANDARD_LUA53_HEADER + data[5:])
-```
-
-**2. Create `xlua.typemap`:**
-
-```
-.type 3 integer
-.type 19 float
-```
-
-**3. Decompile:**
-
-```bash
-bash ./unluac.sh --typemap xlua.typemap fixed.luac -o output.lua
-```
-
-### Example 3: Custom Opcode Mapping
-
-For modified Lua implementations with shuffled opcodes (xLua does **not** shuffle opcodes — use `--typemap` instead):
-
-1. Create opcode mapping file:
-
-```
-.op 0 getglobal
-.op 1 settable
-.op 2 getupval
-.op 3 setglobal
-.op 4 return
-.op 5 tforloop
-.op 6 loadk
-# ... etc
-```
-
-2. Decompile with mapping:
-
-```bash
-bash ./unluac.sh --opmap opcodes.txt custom.luac > output.lua
-```
-
-**Note**: This tool is intended for legitimate purposes such as debugging, learning, and analyzing Lua code. Please respect intellectual property rights and use responsibly.
+- **Crash or exception during decompilation**: Make sure the chunk was compiled with debug information and that its Lua version is supported (5.0–5.5). For a modified Lua VM, try an opcode or type mapping file (see [Command-line Options](#command-line-options)).
+- **Decompiled code looks wrong**: Complex goto control flow and compiler optimizations are known limitations (see [Known Limitations](#known-limitations)).
+- **Still stuck**: Search the [issue tracker](https://github.com/Jeong-Min-Cho/unluac/issues) and open a new issue with the Lua version and a minimal bytecode sample.
