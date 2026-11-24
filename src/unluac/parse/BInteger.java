@@ -123,7 +123,7 @@ public class BInteger extends BObject {
   
   public boolean checkSize(int size) {
     if(big != null) {
-      return big.bitCount() < size * 8;
+      return big.signum() >= 0 && big.bitLength() <= size * 8;
     } else if(size >= 4) {
       return true;
     } else {
@@ -132,23 +132,15 @@ public class BInteger extends BObject {
   }
   
   
-  /* Lua 5.5 style sign conversion */
+  /* Lua 5.5 style sign conversion (lundump.c loadInteger): an even value
+     2x decodes to x, an odd value 2x+1 decodes to ~x == -x - 1. */
   public BInteger convert() {
     if(big != null) {
-      boolean sign = big.testBit(0);
-      if(sign) {
-        return new BInteger(big.shiftRight(1).negate());
-      } else {
-        return new BInteger(big.shiftRight(1));
-      }
+      BigInteger half = big.shiftRight(1);
+      return new BInteger(big.testBit(0) ? half.not() : half);
     } else {
-      int signbit = n & 1;
-      int mag = n >> 1;
-      if(signbit == 0) {
-        return new BInteger(mag);
-      } else {
-        return new BInteger(-mag);
-      }
+      int half = n >> 1;
+      return new BInteger((n & 1) != 0 ? ~half : half);
     }
   }
   

@@ -6,3 +6,4 @@ test/working
 *.orig
 *.rej
 *.jar
+luac.out

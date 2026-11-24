@@ -143,6 +143,9 @@ public class Version {
   public final Setting<ListLengthMode> locallengthmode;
   public final Setting<ListLengthMode> upvaluelengthmode;
   public final Setting<Boolean> useglobaldecl;
+  // Lua 5.5 emits the exit-side CLOSE of a repeat loop with captured
+  // locals after the back jump, instead of before the exit jump.
+  public final Setting<Boolean> repeatcloseafterloop;
   
   private final int major;
   private final int minor;
@@ -202,6 +205,7 @@ public class Version {
           locallengthmode = new Setting<>(ListLengthMode.STRICT);
           upvaluelengthmode = new Setting<>(ListLengthMode.STRICT);
           useglobaldecl = new Setting<>(false);
+          repeatcloseafterloop = new Setting<>(false);
           break;
         case 1:
           varargtype = new Setting<>(VarArgType.HYBRID);
@@ -235,6 +239,7 @@ public class Version {
           locallengthmode = new Setting<>(luaj ? ListLengthMode.ALLOW_NEGATIVE : ListLengthMode.STRICT);
           upvaluelengthmode = new Setting<>(luaj ? ListLengthMode.ALLOW_NEGATIVE : ListLengthMode.STRICT);
           useglobaldecl = new Setting<>(false);
+          repeatcloseafterloop = new Setting<>(false);
           break;
         case 2:
           varargtype = new Setting<>(VarArgType.ELLIPSIS);
@@ -268,6 +273,7 @@ public class Version {
           locallengthmode = new Setting<>(luaj ? ListLengthMode.ALLOW_NEGATIVE : ListLengthMode.STRICT);
           upvaluelengthmode = new Setting<>(luaj ? ListLengthMode.ALLOW_NEGATIVE : ListLengthMode.STRICT);
           useglobaldecl = new Setting<>(false);
+          repeatcloseafterloop = new Setting<>(false);
           break;
         case 3:
           varargtype = new Setting<>(VarArgType.ELLIPSIS);
@@ -301,6 +307,7 @@ public class Version {
           locallengthmode = new Setting<>(ListLengthMode.STRICT);
           upvaluelengthmode = new Setting<>(ListLengthMode.STRICT);
           useglobaldecl = new Setting<>(false);
+          repeatcloseafterloop = new Setting<>(false);
           break;
         case 4:
           varargtype = new Setting<>(VarArgType.ELLIPSIS);
@@ -334,6 +341,7 @@ public class Version {
           locallengthmode = new Setting<>(ListLengthMode.STRICT);
           upvaluelengthmode = new Setting<>(ListLengthMode.IGNORE);
           useglobaldecl = new Setting<>(false);
+          repeatcloseafterloop = new Setting<>(false);
           break;
         case 5:
           varargtype = new Setting<>(VarArgType.NAMED);
@@ -367,6 +375,7 @@ public class Version {
           locallengthmode = new Setting<>(ListLengthMode.STRICT);
           upvaluelengthmode = new Setting<>(ListLengthMode.IGNORE);
           useglobaldecl = new Setting<>(true);
+          repeatcloseafterloop = new Setting<>(true);
           break;
         default: throw new IllegalStateException();
       }

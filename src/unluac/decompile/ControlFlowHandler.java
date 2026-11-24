@@ -656,7 +656,8 @@ public class ControlFlowHandler {
     List<Block> blocks = state.blocks;
     Branch j = state.end_branch;
     while(j != null) {
-      if(j.type == Branch.Type.jump && j.targetFirst <= j.line && !splits_decl(j.targetFirst, j.targetFirst, j.line + 1, declList)) {
+      boolean closeafterloop = j.type == Branch.Type.jump && is_repeat_close_after_loop(state, j);
+      if(j.type == Branch.Type.jump && j.targetFirst <= j.line && !splits_decl(j.targetFirst, j.targetFirst, j.line + (closeafterloop ? 2 : 1), declList)) {
         int line = j.targetFirst;
         int loopback = line;
         int end = j.line + 1;
@@ -714,6 +715,26 @@ public class ControlFlowHandler {
             remove_branch(state, skip);
           }
         }
+        // The exit-side CLOSE follows the back jump, so the loop (and the
+        // scope of its locals) extends through it, and breaks target the
+        // line after it.
+        if(loop == null && closeafterloop) {
+          b = j.previous;
+          while(b != null && !(is_conditional(b) && b.line2 == j.line - 4)) {
+            b = b.previous;
+          }
+          if(b != null) {
+            Branch skip = state.branches[j.line - 2];
+            if(skip == null) throw new IllegalStateException();
+            loop = new RepeatBlock(
+              state.function, b.cond, j.targetFirst, end + 1,
+              get_close_type(state, end), end,
+              false, -1
+            );
+            remove_branch(state, b);
+            remove_branch(state, skip);
+          }
+        }
         if(loop == null) {
           boolean repeat = false;
           if(state.function.header.version.whileformat.get() == Version.WhileFormat.BOTTOM_CONDITION) {
@@ -733,7 +754,11 @@ public class ControlFlowHandler {
               if((k.type == Branch.Type.jump
                   || (k.type == Branch.Type.test || k.type == Branch.Type.comparison)
                   && state.function.header.version.useifgotorewrite.get() != Maybe.NO)
-                && (k.targetFirst < loopback || k.targetSecond > end)
+                // A target that resolves to where this loop's own exit leads
+                // is a break (possibly redirected through an enclosing loop's
+                // back edge), not a goto.
+                && (k.targetFirst < loopback && state.resolved[k.targetFirst] != state.resolved[end]
+                  || k.targetSecond > end && state.resolved[k.targetSecond] != state.resolved[end])
               ) {
                 // Decompilation as loop may require a goto anyway to exit
                 gotoheuristic = true;
@@ -814,6 +839,20 @@ public class ControlFlowHandler {
     }
   }
   
+  /**
+   * Matches the Lua 5.5 layout of a repeat loop with captured locals, where j
+   * is the back jump:
+   *   cond; JMP exit; CLOSE; JMP back (j); exit: CLOSE
+   */
+  private static boolean is_repeat_close_after_loop(State state, Branch j) {
+    int exit = j.line + 1;
+    return state.function.header.version.repeatcloseafterloop.get()
+      && j.targetFirst <= j.line && j.line - 4 >= 1 && exit <= state.code.length
+      && is_jmp_raw(state, j.line - 2) && state.code.target(j.line - 2) == exit
+      && is_nonjump_close(state, j.line - 1)
+      && is_nonjump_close(state, exit);
+  }
+
   private static boolean splits_decl(int line, int begin, int end, Declaration[] declList) {
     for(Declaration decl : declList) {
       if(decl.isSplitBy(line, begin, end)) {

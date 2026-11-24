@@ -220,14 +220,11 @@ Bug fixes and improvements by contributors to this repository.
 
 ### Running Tests
 
-If you have `luac` installed:
-
-```bash
-# Compile test files and run decompiler
-cd test/src
-luac -o ../compiled/test.luac test.lua
-bash ../../unluac.sh ../compiled/test.luac
-```
+The regression suite (`unluac.test.RunTests`) compiles each `test/src/*.lua` with reference
+`luac` binaries, decompiles, recompiles, and compares bytecode. It expects `luac50`, `luac51`,
+`luac514`, `luac52`, `luac53`, `luac54`, `luac548` and `luac55` on `PATH`;
+`tools/build-luac.sh` downloads, verifies and builds them into `~/.local/bin`.
+See the "Running tests" section of [AGENTS.md](AGENTS.md) for the exact command.
 
 ## License
 

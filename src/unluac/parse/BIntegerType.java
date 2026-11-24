@@ -148,7 +148,7 @@ class BIntegerType54 extends BIntegerType {
       do {
         b = buffer.get();
         bigx = bigx.shiftLeft(7);
-        bigx.add(BigInteger.valueOf(b & 0x7F));
+        bigx = bigx.or(BigInteger.valueOf(b & 0x7F));
         // bits += 7;
       } while((b & 0x80) != (end & 0x80));
       return new BInteger(bigx);
