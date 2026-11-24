@@ -4,7 +4,13 @@ public class Validator {
 
   public static void process(Function f, Registers r) {
     Code code = f.code;
-    
+
+    for(int line = 1; line <= code.length; line++) {
+      if(code.op(line) == null) {
+        throw new DecompilerException(f, line, "unmapped opcode " + code.opcode(line));
+      }
+    }
+
     switch(code.op(code.length)) {
       case RETURN:
       case RETURN54:
