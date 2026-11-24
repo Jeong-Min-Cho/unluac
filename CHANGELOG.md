@@ -2,7 +2,7 @@
 
 All notable changes to this fork are listed here. Versions follow [Semantic Versioning](https://semver.org/). The fork started from upstream unluac 1.2.3.530 (October 2025); upstream's own history is on [SourceForge](https://sourceforge.net/p/unluac/hgcode/).
 
-## [1.3.0] - Unreleased
+## [1.3.0] - 2026-11-25
 
 First release of the fork.
 
