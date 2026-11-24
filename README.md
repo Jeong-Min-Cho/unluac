@@ -1,100 +1,73 @@
-# unluac - Lua Decompiler
+# unluac
 
-> **Fork Notice**: This is a fork of the original unluac project from [SourceForge](https://sourceforge.net/p/unluac/hgcode/ci/default/tree/) with bug fixes and improvements.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](license.txt)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+unluac decompiles Lua bytecode back into Lua source. It reads chunks produced by `luac` for Lua 5.0 through 5.5 and can also disassemble them or assemble a disassembly listing back into bytecode.
 
-## Overview
+This is a fork of [tehtmi's unluac](https://sourceforge.net/p/unluac/hgcode/ci/default/tree/) on SourceForge. It supports Lua 5.5, fixes several crashes and control-flow bugs, and runs the regression suite against real `luac` builds for every supported version. See [What this fork changes](#what-this-fork-changes).
 
-**unluac** is a decompiler for Lua bytecode versions 5.0 through 5.4. It converts compiled Lua chunks back into readable Lua source code, making it useful for analyzing, debugging, and understanding Lua bytecode.
+```console
+$ luac -o greet.luac greet.lua
+$ bash ./unluac.sh greet.luac
+local function greet(n)
+  return "Hello, " .. n
+end
 
-### Key Features
+print(greet("World"))
+```
 
-- ✅ **Multi-version Support**: Lua 5.0, 5.1, 5.2, 5.3, and 5.4
-- ✅ **Command-line Interface**: Simple and straightforward usage
-- ✅ **Java-based**: Cross-platform compatibility
-- ✅ **Debug Info Required**: Works with standard Lua compiler output (non-stripped chunks)
+## Getting started
 
-## Installation
+You need a JDK 8 or newer with `javac` and `java` on your `PATH`. A JRE alone can't compile the sources.
 
-### Build from Source
-
-**Requirements**: JDK 8 or higher, with `javac` and `java` on your `PATH` (a JRE alone is not enough).
-
-Use one command to compile the current sources and run the tool. From the repository root:
-
-**Linux / macOS / Git Bash:**
+There are no prebuilt releases. Clone the repository and run the wrapper script from its root:
 
 ```bash
-bash ./unluac.sh "input.luac" -o "output.lua"
+git clone https://github.com/Jeong-Min-Cho/unluac.git
+cd unluac
+bash ./unluac.sh input.luac -o output.lua
 ```
 
-**Windows (Command Prompt or PowerShell):**
+On Windows, use `.\unluac.bat input.luac -o output.lua`.
 
-```powershell
-.\unluac.bat "input.luac" -o "output.lua"
-```
+The scripts clean `build/classes`, compile from `src/`, and run the result. They stop if compilation fails, pass every argument and the exit code through, and print nothing of their own to stdout, so redirection works. You can call them by path from another directory; input and output paths stay relative to where you are. Two invocations share the build directory, so don't run them at the same time.
 
-Each invocation cleans `build/classes`, compiles `Main.java` and its dependencies from `src`, and runs the fresh classes. If compilation fails, the tool does not run. All arguments and the exit code are passed through, and build commands do not add anything to stdout, so output redirection also works:
+To build a standalone jar instead:
 
 ```bash
-bash ./unluac.sh --disassemble "input.luac" > disassembly.txt
-bash ./unluac.sh --typemap xlua.typemap "input.luac" -o "output.lua"
-bash ./unluac.sh --version
+mkdir -p build/classes
+javac -d build/classes -sourcepath src src/unluac/Main.java
+jar cfm unluac.jar MANIFEST.MF -C build/classes .
+java -jar unluac.jar input.luac -o output.lua
 ```
-
-After each Java edit, just rerun the same command. You can invoke the scripts by path from another directory; input/output paths remain relative to your working directory. Run invocations sequentially because they share the build directory.
 
 ## Usage
 
-### Basic Usage
-
-```bash
-bash ./unluac.sh input.luac > output.lua
+```
+bash ./unluac.sh [options] <file>
 ```
 
-### Examples
+Without `-o`, the decompiled source goes to stdout.
 
-**Decompile a Lua chunk:**
+| Option | What it does |
+| --- | --- |
+| `-o`, `--output <file>` | Write to `<file>` instead of stdout |
+| `--disassemble` | Print a disassembly listing instead of Lua source |
+| `--assemble` | Assemble a disassembly listing into bytecode |
+| `--typemap <file>` | Remap constant type tags, for VMs that changed them |
+| `--opmap <file>` | Remap opcode numbers, for VMs that shuffled them |
+| `--annotate-source` | Add comments with each function's original source name and line range |
+| `--nodebug` | Ignore debug information in the input |
+| `--rawstring` | Copy string bytes to the output unchanged |
+| `--luaj` | Accept negative counts and lengths in the chunk, as Luaj's loader does |
+| `--help` | Show the option list |
+| `--version` | Print the version |
 
-```bash
-bash ./unluac.sh myfile.luac > myfile_decompiled.lua
-```
+Debug information gives unluac local variable names and scopes. `luac` keeps it by default. Chunks compiled with `luac -s` decompile much less reliably.
 
-**Decompile with custom opcode mapping** (for custom Lua implementations like xlua):
+### Source annotations
 
-```bash
-bash ./unluac.sh --opmap opcode_map.txt myfile.luac > output.lua
-```
-
-**Disassemble instead of decompile:**
-
-```bash
-bash ./unluac.sh --disassemble myfile.luac
-```
-
-### Command-line Options
-
-- `--typemap <file>` - Use custom type mapping file (for modified Lua VMs with swapped constant types)
-- `--opmap <file>` - Use custom opcode mapping file (for modified Lua VMs with shuffled opcodes)
-- `--disassemble` - Output disassembly instead of decompiled code
-- `--annotate-source` - Add original source labels and function-definition line ranges as comments
-- `--version` - Show version information
-
-### Optional source annotations
-
-```bash
-bash ./unluac.sh --annotate-source input.luac -o output.lua
-```
-
-Or on Windows:
-
-```powershell
-.\unluac.bat --annotate-source input.luac -o output.lua
-```
-
-This adds a comment at the beginning of the main chunk and inside each emitted
-function body, including anonymous functions:
+`--annotate-source` adds a comment to the main chunk and to every function body, anonymous functions included:
 
 ```lua
 function Example:run(value)
@@ -103,231 +76,107 @@ function Example:run(value)
 end
 ```
 
-The annotations use the chunk's debug metadata, not the input filename or the
-line numbers of the generated Lua. Missing source labels inherit from the
-parent prototype; line ranges do not. Unknown labels or definition lines are
-reported as `unavailable` (common for stripped chunks and synthetic wrappers).
-If only a definition's start line is available, only that line is reported.
+The values come from the chunk's debug metadata, not from the input filename or the generated file's line numbers. A function without its own source label inherits its parent's; line ranges are never inherited. Anything missing prints as `unavailable`, which is normal for stripped chunks and synthetic wrappers. If only the start line is known, only the start line is shown.
 
-Source labels retain Lua's `@`/`=` markers and are quoted/escaped so embedded
-newlines or control characters cannot turn a comment into executable Lua.
-Labels can contain original machine paths or source text. These are comments
-only: no statement-level source map or original formatting is reconstructed.
-The flag does not change disassembly/assembly output and is off by default.
-`--nodebug` still disables debug-based variable reconstruction; it does not
-suppress explicitly requested source annotations.
+Labels keep Lua's `@` and `=` prefixes and are quoted and escaped, so a newline or control character in a label can't break out of the comment. Labels may contain paths from the machine that compiled the chunk. The flag only adds comments: it doesn't restore original formatting or map individual statements. It has no effect on `--disassemble` or `--assemble`, and `--nodebug` doesn't turn it off.
 
-## Requirements
+## Lua versions
 
-- **Java**: JDK 8 or higher
-- **Input**: Lua bytecode compiled with debug information (default for `luac`)
-- **Supported Lua Versions**: 5.0, 5.1, 5.2, 5.3, 5.4
+| Version | Status |
+| --- | --- |
+| 5.0, 5.1 | Very good |
+| 5.2, 5.3 | Good |
+| 5.4 | Good; some `goto` edge cases |
+| 5.5 | Supported |
 
-> **Note**: The Lua compiler includes debugging information by default. If chunks are compiled with the `-s` flag (strip debug info), decompilation will not work properly.
+Code that uses `goto` heavily (5.2 and later) is the most likely to come out wrong or not at all.
 
-## Compatibility
+## Modified Lua VMs
 
-### Lua Version Support
+Some games ship a patched Lua VM. If the patch only renumbers constant type tags or opcodes, a map file passed with `--typemap` or `--opmap` is enough.
 
-| Lua Version | Support Level                  |
-| ----------- | ------------------------------ |
-| Lua 5.0     | ✅ Very good                   |
-| Lua 5.1     | ✅ Very good                   |
-| Lua 5.2     | ✅ Good                        |
-| Lua 5.3     | ✅ Good                        |
-| Lua 5.4     | ✅ Good (some goto edge cases) |
+A map replaces the built-in table instead of patching it, so it has to list every tag or opcode the chunk uses. A missing type fails with `unmapped type code N`; a missing opcode crashes the decompiler.
 
-### Supported Variants
-
-#### xLua (Tencent, used in Unity games)
-
-xLua is Tencent's Lua 5.3 bridge for Unity, used widely in Chinese mobile games. It compiles Lua 5.3 bytecode with three non-standard modifications:
-
-| Modification | Standard Lua 5.3 | xLua |
-| --- | --- | --- |
-| Upvalue entry size | 2 bytes | 3 bytes |
-| Integer constant type tag | 3 | 19 |
-| Float constant type tag | 19 | 3 |
-| Header (bytes 0–4) | `\x1bLua\x53` | Modified |
-
-**unluac handles all of these natively** — no patched build required.
-
-**Step 1 — Fix the header**
-
-Replace the first 5 bytes of the `.luac` file with the standard Lua 5.3 header:
-
-```python
-STANDARD_LUA53_HEADER = b'\x1bLua\x53'
-
-def fix_xlua_header(data: bytes) -> bytes:
-    return STANDARD_LUA53_HEADER + data[5:]
-```
-
-**Step 2 — Create a typemap file** (`xlua.typemap`):
+A type map has one `.type` line per tag. The names are `nil`, `boolean`, `false`, `true`, `number`, `float`, `integer`, `string`, `short_string` and `long_string`; which ones apply depends on the Lua version. Stock Lua 5.3 would be:
 
 ```
-.type 3 integer
-.type 19 float
+.type 0 nil
+.type 1 boolean
+.type 3 float
+.type 19 integer
+.type 4 short_string
+.type 20 long_string
 ```
 
-**Step 3 — Decompile:**
+An opcode map has one `.op` line per opcode, using the lowercase names that `--disassemble` prints for that Lua version:
+
+```
+.op 0 move
+.op 1 loadk
+.op 2 loadkx
+# ...one line for every opcode
+```
+
+### xLua
+
+[xLua](https://github.com/Tencent/xLua), Tencent's Lua binding for Unity, produces Lua 5.3 bytecode with a modified header and with the integer and float tags swapped (3 and 19). It doesn't shuffle opcodes, so only a type map is needed. To decompile it:
+
+1. Replace the first five bytes with the stock Lua 5.3 signature, `\x1bLua\x53`:
+
+   ```python
+   with open("input.luac", "rb") as f:
+       data = f.read()
+   with open("fixed.luac", "wb") as f:
+       f.write(b"\x1bLua\x53" + data[5:])
+   ```
+
+2. Save this as `xlua.typemap`. It's the stock 5.3 map with 3 and 19 swapped:
+
+   ```
+   .type 0 nil
+   .type 1 boolean
+   .type 3 integer
+   .type 19 float
+   .type 4 short_string
+   .type 20 long_string
+   ```
+
+3. Run:
+
+   ```bash
+   bash ./unluac.sh --typemap xlua.typemap fixed.luac -o output.lua
+   ```
+
+## Running the tests
+
+The suite in `src/unluac/test` compiles each file in `test/src` with a reference `luac`, decompiles it, recompiles the output, and checks that the bytecode matches. It looks for `luac50`, `luac51`, `luac514`, `luac52`, `luac53`, `luac54`, `luac548` and `luac55` on `PATH`. On Linux, `bash tools/build-luac.sh` downloads the official Lua sources, checks their SHA-256 sums, and installs those binaries into `~/.local/bin`.
 
 ```bash
-bash ./unluac.sh --typemap xlua.typemap fixed.luac -o output.lua
+rm -rf build/classes && mkdir -p build/classes \
+  && javac -d build/classes -sourcepath src src/unluac/Main.java src/unluac/test/RunTests.java \
+  && java -cp build/classes unluac.test.RunTests
 ```
 
-The 3-byte upvalue format is handled automatically; no extra flags needed.
+A version whose compiler is missing is skipped rather than failed, and a run where everything was skipped still exits 0, so read the summary. [AGENTS.md](AGENTS.md) has the Windows command and how to add a test.
 
-See [Example 2](#example-2-xlua-bytecode-unity-games) for a complete end-to-end workflow.
+## What this fork changes
 
-### Known Limitations
+Compared with the upstream code the fork started from (1.2.3.530, October 2025):
 
-- **Stripped Bytecode**: Cannot decompile chunks compiled with `-s` flag
-- **Complex Gotos**: Lua 5.2+ code with heavy use of goto statements may not decompile perfectly
-- **Custom Lua VMs**: Modified Lua implementations may require custom opcode or type mappings (see [Supported Variants](#supported-variants) for known working configurations)
+- Lua 5.5 support: the 5.5 header, string and upvalue formats, named varargs, the 5.5 opcode set, and correct decoding of integer constants.
+- Fixed an `ArrayIndexOutOfBoundsException` caused by an off-by-one register count on `CALL` and `VARARG` instructions with a variable number of arguments or results.
+- Fixed an `IllegalStateException` on a `LOADKX` that isn't followed by `EXTRAARG`.
+- Fixed nested loops and breaks that were dropped or misplaced when a `break` jumps through an enclosing loop's back edge, and Lua 5.5 `repeat` loops with captured locals.
+- Added `--annotate-source`.
+- Added `unluac.sh` and `unluac.bat`, a jar manifest, and `tools/build-luac.sh` for the test compilers.
 
-## Changes in This Fork
+Bugs and feature requests go to the [issue tracker](https://github.com/Jeong-Min-Cho/unluac/issues). Attaching the `.luac` file, or the source and the `luac` version that produced it, makes a report much easier to act on.
 
-This fork includes critical bug fixes not present in the original version:
+## Credits and license
 
-### Fixed: ArrayIndexOutOfBoundsException (Critical)
+unluac was written by tehtmi. Thomas Klaeger added Lua 5.0 support and John Fowler contributed a closure fix; see [authors.txt](authors.txt).
 
-**Problem**: Original unluac crashed when decompiling valid Lua bytecode containing CALL or VARARG instructions with variable return values at register boundaries.
+Released under the MIT License; see [license.txt](license.txt).
+Copyright (c) 2011-2020 tehtmi. Portions copyright (c) 2014 Thomas Klaeger.
 
-**Solution**:
-
-- Fixed off-by-one error in register count calculation in `Decompiler.java`
-- Added defensive bounds checking in `Registers.java`
-
-**Impact**:
-
-- Fixes crashes on valid Lua bytecode
-- Improves compatibility with custom Lua implementations
-
-## Credits
-
-### Original Authors
-
-- **tehtmi** - Main developer
-- **Thomas Klaeger** - Added support for Lua 5.0
-- **John Fowler** - Contributed closure fix patch
-
-See [authors.txt](authors.txt) for complete attribution.
-
-### This Fork
-
-Bug fixes and improvements by contributors to this repository.
-
-### Running Tests
-
-The regression suite (`unluac.test.RunTests`) compiles each `test/src/*.lua` with reference
-`luac` binaries, decompiles, recompiles, and compares bytecode. It expects `luac50`, `luac51`,
-`luac514`, `luac52`, `luac53`, `luac54`, `luac548` and `luac55` on `PATH`;
-`tools/build-luac.sh` downloads, verifies and builds them into `~/.local/bin`.
-See the "Running tests" section of [AGENTS.md](AGENTS.md) for the exact command.
-
-## License
-
-MIT License - see [license.txt](license.txt) for details.
-
-Copyright (c) 2011-2020 tehtmi
-Portions Copyright (c) 2014 Thomas Klaeger
-
-## Resources
-
-- **Original Project**: [SourceForge - unluac](https://sourceforge.net/p/unluac/hgcode/ci/default/tree/)
-- **Lua Official Site**: [lua.org](https://www.lua.org/)
-- **Lua Reference Manual**: [Lua 5.4 Reference](https://www.lua.org/manual/5.4/)
-
-## Troubleshooting
-
-### "Exception in thread..." errors
-
-If you encounter `ArrayIndexOutOfBoundsException`, `NullPointerException`, or similar errors:
-
-1. **Use this fork** - The original version has known bugs that are fixed here
-2. **Check debug info** - Ensure your `.luac` file was compiled with debug information
-3. **Verify Lua version** - Make sure the bytecode version is supported (5.0-5.4)
-4. **Custom VM?** - If using a modified Lua VM, you may need an opcode mapping file
-
-### Decompiled code doesn't run
-
-This can happen due to:
-
-- **Control flow complexity** - Very complex goto statements in Lua 5.2+
-- **Bytecode optimization** - Some compiler optimizations may not decompile perfectly
-- **Custom implementations** - Non-standard Lua VMs may have quirks
-
-## Examples
-
-### Example 1: Basic Decompilation
-
-```lua
--- original.lua
-local function greet(name)
-    return "Hello, " .. name .. "!"
-end
-print(greet("World"))
-```
-
-```bash
-# Compile
-luac -o original.luac original.lua
-
-# Decompile
-bash ./unluac.sh original.luac > decompiled.lua
-```
-
-### Example 2: xLua Bytecode (Unity Games)
-
-xLua (used in many Unity mobile games) compiles Lua 5.3 with a modified header and swapped constant type tags. See [Supported Variants → xLua](#xlua-tencent-used-in-unity-games) for the full explanation.
-
-**1. Fix the header (Python):**
-
-```python
-STANDARD_LUA53_HEADER = b'\x1bLua\x53'
-
-with open("input.luac", "rb") as f:
-    data = f.read()
-
-with open("fixed.luac", "wb") as f:
-    f.write(STANDARD_LUA53_HEADER + data[5:])
-```
-
-**2. Create `xlua.typemap`:**
-
-```
-.type 3 integer
-.type 19 float
-```
-
-**3. Decompile:**
-
-```bash
-bash ./unluac.sh --typemap xlua.typemap fixed.luac -o output.lua
-```
-
-### Example 3: Custom Opcode Mapping
-
-For modified Lua implementations with shuffled opcodes (xLua does **not** shuffle opcodes — use `--typemap` instead):
-
-1. Create opcode mapping file:
-
-```
-.op 0 getglobal
-.op 1 settable
-.op 2 getupval
-.op 3 setglobal
-.op 4 return
-.op 5 tforloop
-.op 6 loadk
-# ... etc
-```
-
-2. Decompile with mapping:
-
-```bash
-bash ./unluac.sh --opmap opcodes.txt custom.luac > output.lua
-```
-
-**Note**: This tool is intended for legitimate purposes such as debugging, learning, and analyzing Lua code. Please respect intellectual property rights and use responsibly.
+Please use unluac on code you have the right to inspect.
